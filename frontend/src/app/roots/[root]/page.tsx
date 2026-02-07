@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import { API_BASE } from '@/config';
 
 interface RootInfo {
   id: number;
@@ -55,7 +56,7 @@ export default function RootDetailPage() {
     if (!rootParam) return;
 
     setLoading(true);
-    fetch(`/api/roots/${encodeURIComponent(rootParam)}`)
+    fetch(`${API_BASE}/roots/${encodeURIComponent(rootParam)}`)
       .then((res) => res.json())
       .then((data) => {
         setRootInfo(data.root);

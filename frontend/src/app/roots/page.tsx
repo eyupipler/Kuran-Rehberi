@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { API_BASE } from '@/config';
 
 interface Root {
   id: number;
@@ -24,7 +25,7 @@ export default function RootsPage() {
   useEffect(() => {
     setLoading(true);
 
-    let url = `/api/roots?limit=${limit}&offset=${page * limit}&sort=${sortBy}`;
+    let url = `${API_BASE}/roots?limit=${limit}&offset=${page * limit}&sort=${sortBy}`;
 
     fetch(url)
       .then((res) => res.json())
@@ -44,7 +45,7 @@ export default function RootsPage() {
 
     setLoading(true);
     try {
-      const res = await fetch(`/api/roots/search/${encodeURIComponent(searchQuery)}`);
+      const res = await fetch(`${API_BASE}/roots/search/${encodeURIComponent(searchQuery)}`);
       const data = await res.json();
       setRoots(data.results);
       setTotal(data.results.length);

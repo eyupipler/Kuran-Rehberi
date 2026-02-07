@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: kuran-rehberi-api
+    runtime: node
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+    plan: free

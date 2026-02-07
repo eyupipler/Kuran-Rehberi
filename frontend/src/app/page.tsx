@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { API_BASE } from '@/config';
 
 interface Surah {
   id: number;
@@ -20,7 +21,7 @@ export default function Home() {
   const [filter, setFilter] = useState<'all' | 'Mekki' | 'Medeni'>('all');
 
   useEffect(() => {
-    fetch('/api/surahs')
+    fetch(`${API_BASE}/surahs`)
       .then((res) => res.json())
       .then((data) => {
         setSurahs(data);

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import { API_BASE } from '@/config';
 
 interface VerseData {
   id: number;
@@ -45,7 +46,7 @@ export default function VersePage() {
     if (!surahId || !verseNumber) return;
 
     setLoading(true);
-    fetch(`/api/verses/${surahId}/${verseNumber}`)
+    fetch(`${API_BASE}/verses/${surahId}/${verseNumber}`)
       .then((res) => res.json())
       .then((data) => {
         setVerse(data.verse);

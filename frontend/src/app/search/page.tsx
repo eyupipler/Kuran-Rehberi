@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { API_BASE } from '@/config';
 
 interface SearchResult {
   surahId: number;
@@ -31,7 +32,7 @@ export default function SearchPage() {
 
   // Tercumanlari yukle
   useEffect(() => {
-    fetch('/api/search/translators')
+    fetch(`${API_BASE}/search/translators`)
       .then((res) => res.json())
       .then((data) => setTranslators(data))
       .catch(console.error);
@@ -45,9 +46,9 @@ export default function SearchPage() {
     try {
       let url = '';
       if (searchType === 'arabic') {
-        url = `/api/search/arabic?q=${encodeURIComponent(query)}`;
+        url = `${API_BASE}/search/arabic?q=${encodeURIComponent(query)}`;
       } else {
-        url = `/api/search?q=${encodeURIComponent(query)}`;
+        url = `${API_BASE}/search?q=${encodeURIComponent(query)}`;
         if (selectedTranslator) {
           url += `&translator=${selectedTranslator}`;
         }

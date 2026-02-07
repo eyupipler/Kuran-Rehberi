@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import { API_BASE } from '@/config';
 
 interface Surah {
   id: number;
@@ -37,7 +38,7 @@ export default function SurahPage() {
 
   // Tercumanlari yukle
   useEffect(() => {
-    fetch('/api/search/translators')
+    fetch(`${API_BASE}/search/translators`)
       .then((res) => res.json())
       .then((data) => setTranslators(data))
       .catch(console.error);
@@ -48,7 +49,7 @@ export default function SurahPage() {
     if (!surahId) return;
 
     setLoading(true);
-    fetch(`/api/surahs/${surahId}/verses?translator=${selectedTranslator}`)
+    fetch(`${API_BASE}/surahs/${surahId}/verses?translator=${selectedTranslator}`)
       .then((res) => res.json())
       .then((data) => {
         setSurah(data.surah);
