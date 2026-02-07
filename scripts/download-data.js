@@ -1,0 +1,282 @@
+/**
+ * Kuran Rehberi - Veri Indirme Scripti
+ *
+ * Bu script asagidaki kaynaklardan veri indirir:
+ * 1. Tanzil.net - Kuran metni ve ceviriler
+ * 2. Quranic Arabic Corpus - Morfoloji verileri
+ */
+
+const https = require('https');
+const fs = require('fs');
+const path = require('path');
+
+const DATA_DIR = path.join(__dirname, '..', 'data');
+
+// Tanzil.net ceviri listesi (Turkce oncelikli)
+const TRANSLATIONS = {
+  // Turkce Ceviriler
+  'tr.diyanet': 'Diyanet Isleri',
+  'tr.yazir': 'Elmalili Hamdi Yazir',
+  'tr.yildirim': 'Suat Yildirim',
+  'tr.ates': 'Suleyman Ates',
+  'tr.bulac': 'Ali Bulac',
+  'tr.ozturk': 'Yasar Nuri Ozturk',
+  'tr.vakfi': 'Diyanet Vakfi',
+  'tr.golpinarli': 'Abdulbaki Golpinarli',
+  'tr.yuksel': 'Edip Yuksel',
+
+  // Ingilizce Ceviriler
+  'en.sahih': 'Sahih International',
+  'en.yusufali': 'Abdullah Yusuf Ali',
+  'en.pickthall': 'Marmaduke Pickthall',
+  'en.arberry': 'Arthur John Arberry',
+  'en.shakir': 'Mohammad Habib Shakir',
+
+  // Arapca (Orijinal)
+  'ar.quran-simple': 'Arapca (Basit)',
+  'ar.quran-uthmani': 'Arapca (Uthmani)',
+};
+
+// Sure bilgileri
+const SURAH_INFO = [
+  { number: 1, name: 'Fatiha', arabicName: 'الفاتحة', verses: 7, revelation: 'Mekki' },
+  { number: 2, name: 'Bakara', arabicName: 'البقرة', verses: 286, revelation: 'Medeni' },
+  { number: 3, name: 'Al-i Imran', arabicName: 'آل عمران', verses: 200, revelation: 'Medeni' },
+  { number: 4, name: 'Nisa', arabicName: 'النساء', verses: 176, revelation: 'Medeni' },
+  { number: 5, name: 'Maide', arabicName: 'المائدة', verses: 120, revelation: 'Medeni' },
+  { number: 6, name: 'Enam', arabicName: 'الأنعام', verses: 165, revelation: 'Mekki' },
+  { number: 7, name: 'Araf', arabicName: 'الأعراف', verses: 206, revelation: 'Mekki' },
+  { number: 8, name: 'Enfal', arabicName: 'الأنفال', verses: 75, revelation: 'Medeni' },
+  { number: 9, name: 'Tevbe', arabicName: 'التوبة', verses: 129, revelation: 'Medeni' },
+  { number: 10, name: 'Yunus', arabicName: 'يونس', verses: 109, revelation: 'Mekki' },
+  // ... diger sureler icin tam liste asagida
+];
+
+/**
+ * URL'den veri indir
+ */
+function downloadFile(url) {
+  return new Promise((resolve, reject) => {
+    https.get(url, (response) => {
+      if (response.statusCode === 301 || response.statusCode === 302) {
+        downloadFile(response.headers.location).then(resolve).catch(reject);
+        return;
+      }
+
+      let data = '';
+      response.on('data', chunk => data += chunk);
+      response.on('end', () => resolve(data));
+      response.on('error', reject);
+    }).on('error', reject);
+  });
+}
+
+/**
+ * Quran API'den ceviri indir
+ */
+async function downloadTranslation(editionId, name) {
+  const url = `https://cdn.jsdelivr.net/gh/fawazahmed0/quran-api@1/editions/${editionId}.json`;
+  console.log(`Indiriliyor: ${name} (${editionId})...`);
+
+  try {
+    const data = await downloadFile(url);
+    const filePath = path.join(DATA_DIR, 'translations', `${editionId}.json`);
+    fs.writeFileSync(filePath, data);
+    console.log(`  ✓ Kaydedildi: ${filePath}`);
+    return true;
+  } catch (error) {
+    console.error(`  ✗ Hata: ${error.message}`);
+    return false;
+  }
+}
+
+/**
+ * Morfoloji verilerini indir (Quranic Arabic Corpus)
+ */
+async function downloadMorphology() {
+  const url = 'https://raw.githubusercontent.com/mustafa0x/quran-morphology/master/quran-morphology.txt';
+  console.log('Morfoloji verileri indiriliyor...');
+
+  try {
+    const data = await downloadFile(url);
+    const filePath = path.join(DATA_DIR, 'morphology', 'quran-morphology.txt');
+    fs.writeFileSync(filePath, data);
+    console.log(`  ✓ Kaydedildi: ${filePath}`);
+    return true;
+  } catch (error) {
+    console.error(`  ✗ Hata: ${error.message}`);
+    return false;
+  }
+}
+
+/**
+ * Sure bilgilerini kaydet
+ */
+function saveSurahInfo() {
+  // Tam sure listesi
+  const fullSurahList = [
+    { number: 1, name: 'Fatiha', arabicName: 'الفاتحة', englishName: 'The Opening', verses: 7, revelation: 'Mekki', revelationOrder: 5 },
+    { number: 2, name: 'Bakara', arabicName: 'البقرة', englishName: 'The Cow', verses: 286, revelation: 'Medeni', revelationOrder: 87 },
+    { number: 3, name: 'Al-i Imran', arabicName: 'آل عمران', englishName: 'Family of Imran', verses: 200, revelation: 'Medeni', revelationOrder: 89 },
+    { number: 4, name: 'Nisa', arabicName: 'النساء', englishName: 'The Women', verses: 176, revelation: 'Medeni', revelationOrder: 92 },
+    { number: 5, name: 'Maide', arabicName: 'المائدة', englishName: 'The Table Spread', verses: 120, revelation: 'Medeni', revelationOrder: 112 },
+    { number: 6, name: 'Enam', arabicName: 'الأنعام', englishName: 'The Cattle', verses: 165, revelation: 'Mekki', revelationOrder: 55 },
+    { number: 7, name: 'Araf', arabicName: 'الأعراف', englishName: 'The Heights', verses: 206, revelation: 'Mekki', revelationOrder: 39 },
+    { number: 8, name: 'Enfal', arabicName: 'الأنفال', englishName: 'The Spoils of War', verses: 75, revelation: 'Medeni', revelationOrder: 88 },
+    { number: 9, name: 'Tevbe', arabicName: 'التوبة', englishName: 'The Repentance', verses: 129, revelation: 'Medeni', revelationOrder: 113 },
+    { number: 10, name: 'Yunus', arabicName: 'يونس', englishName: 'Jonah', verses: 109, revelation: 'Mekki', revelationOrder: 51 },
+    { number: 11, name: 'Hud', arabicName: 'هود', englishName: 'Hud', verses: 123, revelation: 'Mekki', revelationOrder: 52 },
+    { number: 12, name: 'Yusuf', arabicName: 'يوسف', englishName: 'Joseph', verses: 111, revelation: 'Mekki', revelationOrder: 53 },
+    { number: 13, name: 'Rad', arabicName: 'الرعد', englishName: 'The Thunder', verses: 43, revelation: 'Medeni', revelationOrder: 96 },
+    { number: 14, name: 'Ibrahim', arabicName: 'إبراهيم', englishName: 'Abraham', verses: 52, revelation: 'Mekki', revelationOrder: 72 },
+    { number: 15, name: 'Hicr', arabicName: 'الحجر', englishName: 'The Rocky Tract', verses: 99, revelation: 'Mekki', revelationOrder: 54 },
+    { number: 16, name: 'Nahl', arabicName: 'النحل', englishName: 'The Bee', verses: 128, revelation: 'Mekki', revelationOrder: 70 },
+    { number: 17, name: 'Isra', arabicName: 'الإسراء', englishName: 'The Night Journey', verses: 111, revelation: 'Mekki', revelationOrder: 50 },
+    { number: 18, name: 'Kehf', arabicName: 'الكهف', englishName: 'The Cave', verses: 110, revelation: 'Mekki', revelationOrder: 69 },
+    { number: 19, name: 'Meryem', arabicName: 'مريم', englishName: 'Mary', verses: 98, revelation: 'Mekki', revelationOrder: 44 },
+    { number: 20, name: 'Taha', arabicName: 'طه', englishName: 'Ta-Ha', verses: 135, revelation: 'Mekki', revelationOrder: 45 },
+    { number: 21, name: 'Enbiya', arabicName: 'الأنبياء', englishName: 'The Prophets', verses: 112, revelation: 'Mekki', revelationOrder: 73 },
+    { number: 22, name: 'Hac', arabicName: 'الحج', englishName: 'The Pilgrimage', verses: 78, revelation: 'Medeni', revelationOrder: 103 },
+    { number: 23, name: 'Muminun', arabicName: 'المؤمنون', englishName: 'The Believers', verses: 118, revelation: 'Mekki', revelationOrder: 74 },
+    { number: 24, name: 'Nur', arabicName: 'النور', englishName: 'The Light', verses: 64, revelation: 'Medeni', revelationOrder: 102 },
+    { number: 25, name: 'Furkan', arabicName: 'الفرقان', englishName: 'The Criterion', verses: 77, revelation: 'Mekki', revelationOrder: 42 },
+    { number: 26, name: 'Suara', arabicName: 'الشعراء', englishName: 'The Poets', verses: 227, revelation: 'Mekki', revelationOrder: 47 },
+    { number: 27, name: 'Neml', arabicName: 'النمل', englishName: 'The Ant', verses: 93, revelation: 'Mekki', revelationOrder: 48 },
+    { number: 28, name: 'Kasas', arabicName: 'القصص', englishName: 'The Stories', verses: 88, revelation: 'Mekki', revelationOrder: 49 },
+    { number: 29, name: 'Ankebut', arabicName: 'العنكبوت', englishName: 'The Spider', verses: 69, revelation: 'Mekki', revelationOrder: 85 },
+    { number: 30, name: 'Rum', arabicName: 'الروم', englishName: 'The Romans', verses: 60, revelation: 'Mekki', revelationOrder: 84 },
+    { number: 31, name: 'Lokman', arabicName: 'لقمان', englishName: 'Luqman', verses: 34, revelation: 'Mekki', revelationOrder: 57 },
+    { number: 32, name: 'Secde', arabicName: 'السجدة', englishName: 'The Prostration', verses: 30, revelation: 'Mekki', revelationOrder: 75 },
+    { number: 33, name: 'Ahzab', arabicName: 'الأحزاب', englishName: 'The Combined Forces', verses: 73, revelation: 'Medeni', revelationOrder: 90 },
+    { number: 34, name: 'Sebe', arabicName: 'سبأ', englishName: 'Sheba', verses: 54, revelation: 'Mekki', revelationOrder: 58 },
+    { number: 35, name: 'Fatir', arabicName: 'فاطر', englishName: 'Originator', verses: 45, revelation: 'Mekki', revelationOrder: 43 },
+    { number: 36, name: 'Yasin', arabicName: 'يس', englishName: 'Ya Sin', verses: 83, revelation: 'Mekki', revelationOrder: 41 },
+    { number: 37, name: 'Saffat', arabicName: 'الصافات', englishName: 'Those who set the Ranks', verses: 182, revelation: 'Mekki', revelationOrder: 56 },
+    { number: 38, name: 'Sad', arabicName: 'ص', englishName: 'The Letter Sad', verses: 88, revelation: 'Mekki', revelationOrder: 38 },
+    { number: 39, name: 'Zumer', arabicName: 'الزمر', englishName: 'The Troops', verses: 75, revelation: 'Mekki', revelationOrder: 59 },
+    { number: 40, name: 'Mumin', arabicName: 'غافر', englishName: 'The Forgiver', verses: 85, revelation: 'Mekki', revelationOrder: 60 },
+    { number: 41, name: 'Fussilet', arabicName: 'فصلت', englishName: 'Explained in Detail', verses: 54, revelation: 'Mekki', revelationOrder: 61 },
+    { number: 42, name: 'Sura', arabicName: 'الشورى', englishName: 'The Consultation', verses: 53, revelation: 'Mekki', revelationOrder: 62 },
+    { number: 43, name: 'Zuhruf', arabicName: 'الزخرف', englishName: 'The Ornaments of Gold', verses: 89, revelation: 'Mekki', revelationOrder: 63 },
+    { number: 44, name: 'Duhan', arabicName: 'الدخان', englishName: 'The Smoke', verses: 59, revelation: 'Mekki', revelationOrder: 64 },
+    { number: 45, name: 'Casiye', arabicName: 'الجاثية', englishName: 'The Crouching', verses: 37, revelation: 'Mekki', revelationOrder: 65 },
+    { number: 46, name: 'Ahkaf', arabicName: 'الأحقاف', englishName: 'The Wind-Curved Sandhills', verses: 35, revelation: 'Mekki', revelationOrder: 66 },
+    { number: 47, name: 'Muhammed', arabicName: 'محمد', englishName: 'Muhammad', verses: 38, revelation: 'Medeni', revelationOrder: 95 },
+    { number: 48, name: 'Fetih', arabicName: 'الفتح', englishName: 'The Victory', verses: 29, revelation: 'Medeni', revelationOrder: 111 },
+    { number: 49, name: 'Hucurat', arabicName: 'الحجرات', englishName: 'The Rooms', verses: 18, revelation: 'Medeni', revelationOrder: 106 },
+    { number: 50, name: 'Kaf', arabicName: 'ق', englishName: 'The Letter Qaf', verses: 45, revelation: 'Mekki', revelationOrder: 34 },
+    { number: 51, name: 'Zariyat', arabicName: 'الذاريات', englishName: 'The Winnowing Winds', verses: 60, revelation: 'Mekki', revelationOrder: 67 },
+    { number: 52, name: 'Tur', arabicName: 'الطور', englishName: 'The Mount', verses: 49, revelation: 'Mekki', revelationOrder: 76 },
+    { number: 53, name: 'Necm', arabicName: 'النجم', englishName: 'The Star', verses: 62, revelation: 'Mekki', revelationOrder: 23 },
+    { number: 54, name: 'Kamer', arabicName: 'القمر', englishName: 'The Moon', verses: 55, revelation: 'Mekki', revelationOrder: 37 },
+    { number: 55, name: 'Rahman', arabicName: 'الرحمن', englishName: 'The Beneficent', verses: 78, revelation: 'Medeni', revelationOrder: 97 },
+    { number: 56, name: 'Vakia', arabicName: 'الواقعة', englishName: 'The Inevitable', verses: 96, revelation: 'Mekki', revelationOrder: 46 },
+    { number: 57, name: 'Hadid', arabicName: 'الحديد', englishName: 'The Iron', verses: 29, revelation: 'Medeni', revelationOrder: 94 },
+    { number: 58, name: 'Mucadele', arabicName: 'المجادلة', englishName: 'The Pleading Woman', verses: 22, revelation: 'Medeni', revelationOrder: 105 },
+    { number: 59, name: 'Hasr', arabicName: 'الحشر', englishName: 'The Exile', verses: 24, revelation: 'Medeni', revelationOrder: 101 },
+    { number: 60, name: 'Mumtehine', arabicName: 'الممتحنة', englishName: 'She that is to be examined', verses: 13, revelation: 'Medeni', revelationOrder: 91 },
+    { number: 61, name: 'Saf', arabicName: 'الصف', englishName: 'The Ranks', verses: 14, revelation: 'Medeni', revelationOrder: 109 },
+    { number: 62, name: 'Cuma', arabicName: 'الجمعة', englishName: 'The Congregation', verses: 11, revelation: 'Medeni', revelationOrder: 110 },
+    { number: 63, name: 'Munafikun', arabicName: 'المنافقون', englishName: 'The Hypocrites', verses: 11, revelation: 'Medeni', revelationOrder: 104 },
+    { number: 64, name: 'Tegabun', arabicName: 'التغابن', englishName: 'The Mutual Disillusion', verses: 18, revelation: 'Medeni', revelationOrder: 108 },
+    { number: 65, name: 'Talak', arabicName: 'الطلاق', englishName: 'The Divorce', verses: 12, revelation: 'Medeni', revelationOrder: 99 },
+    { number: 66, name: 'Tahrim', arabicName: 'التحريم', englishName: 'The Prohibition', verses: 12, revelation: 'Medeni', revelationOrder: 107 },
+    { number: 67, name: 'Mulk', arabicName: 'الملك', englishName: 'The Sovereignty', verses: 30, revelation: 'Mekki', revelationOrder: 77 },
+    { number: 68, name: 'Kalem', arabicName: 'القلم', englishName: 'The Pen', verses: 52, revelation: 'Mekki', revelationOrder: 2 },
+    { number: 69, name: 'Hakka', arabicName: 'الحاقة', englishName: 'The Reality', verses: 52, revelation: 'Mekki', revelationOrder: 78 },
+    { number: 70, name: 'Mearic', arabicName: 'المعارج', englishName: 'The Ascending Stairways', verses: 44, revelation: 'Mekki', revelationOrder: 79 },
+    { number: 71, name: 'Nuh', arabicName: 'نوح', englishName: 'Noah', verses: 28, revelation: 'Mekki', revelationOrder: 71 },
+    { number: 72, name: 'Cin', arabicName: 'الجن', englishName: 'The Jinn', verses: 28, revelation: 'Mekki', revelationOrder: 40 },
+    { number: 73, name: 'Muzzemmil', arabicName: 'المزمل', englishName: 'The Enshrouded One', verses: 20, revelation: 'Mekki', revelationOrder: 3 },
+    { number: 74, name: 'Muddessir', arabicName: 'المدثر', englishName: 'The Cloaked One', verses: 56, revelation: 'Mekki', revelationOrder: 4 },
+    { number: 75, name: 'Kiyame', arabicName: 'القيامة', englishName: 'The Resurrection', verses: 40, revelation: 'Mekki', revelationOrder: 31 },
+    { number: 76, name: 'Insan', arabicName: 'الإنسان', englishName: 'The Man', verses: 31, revelation: 'Medeni', revelationOrder: 98 },
+    { number: 77, name: 'Murselat', arabicName: 'المرسلات', englishName: 'The Emissaries', verses: 50, revelation: 'Mekki', revelationOrder: 33 },
+    { number: 78, name: 'Nebe', arabicName: 'النبأ', englishName: 'The Tidings', verses: 40, revelation: 'Mekki', revelationOrder: 80 },
+    { number: 79, name: 'Naziat', arabicName: 'النازعات', englishName: 'Those who drag forth', verses: 46, revelation: 'Mekki', revelationOrder: 81 },
+    { number: 80, name: 'Abese', arabicName: 'عبس', englishName: 'He Frowned', verses: 42, revelation: 'Mekki', revelationOrder: 24 },
+    { number: 81, name: 'Tekvir', arabicName: 'التكوير', englishName: 'The Overthrowing', verses: 29, revelation: 'Mekki', revelationOrder: 7 },
+    { number: 82, name: 'Infitar', arabicName: 'الانفطار', englishName: 'The Cleaving', verses: 19, revelation: 'Mekki', revelationOrder: 82 },
+    { number: 83, name: 'Mutaffifin', arabicName: 'المطففين', englishName: 'The Defrauding', verses: 36, revelation: 'Mekki', revelationOrder: 86 },
+    { number: 84, name: 'Insikak', arabicName: 'الانشقاق', englishName: 'The Sundering', verses: 25, revelation: 'Mekki', revelationOrder: 83 },
+    { number: 85, name: 'Buruc', arabicName: 'البروج', englishName: 'The Mansions of the Stars', verses: 22, revelation: 'Mekki', revelationOrder: 27 },
+    { number: 86, name: 'Tarik', arabicName: 'الطارق', englishName: 'The Nightcommer', verses: 17, revelation: 'Mekki', revelationOrder: 36 },
+    { number: 87, name: 'Ala', arabicName: 'الأعلى', englishName: 'The Most High', verses: 19, revelation: 'Mekki', revelationOrder: 8 },
+    { number: 88, name: 'Gasiye', arabicName: 'الغاشية', englishName: 'The Overwhelming', verses: 26, revelation: 'Mekki', revelationOrder: 68 },
+    { number: 89, name: 'Fecr', arabicName: 'الفجر', englishName: 'The Dawn', verses: 30, revelation: 'Mekki', revelationOrder: 10 },
+    { number: 90, name: 'Beled', arabicName: 'البلد', englishName: 'The City', verses: 20, revelation: 'Mekki', revelationOrder: 35 },
+    { number: 91, name: 'Sems', arabicName: 'الشمس', englishName: 'The Sun', verses: 15, revelation: 'Mekki', revelationOrder: 26 },
+    { number: 92, name: 'Leyl', arabicName: 'الليل', englishName: 'The Night', verses: 21, revelation: 'Mekki', revelationOrder: 9 },
+    { number: 93, name: 'Duha', arabicName: 'الضحى', englishName: 'The Morning Hours', verses: 11, revelation: 'Mekki', revelationOrder: 11 },
+    { number: 94, name: 'Insirah', arabicName: 'الشرح', englishName: 'The Relief', verses: 8, revelation: 'Mekki', revelationOrder: 12 },
+    { number: 95, name: 'Tin', arabicName: 'التين', englishName: 'The Fig', verses: 8, revelation: 'Mekki', revelationOrder: 28 },
+    { number: 96, name: 'Alak', arabicName: 'العلق', englishName: 'The Clot', verses: 19, revelation: 'Mekki', revelationOrder: 1 },
+    { number: 97, name: 'Kadir', arabicName: 'القدر', englishName: 'The Power', verses: 5, revelation: 'Mekki', revelationOrder: 25 },
+    { number: 98, name: 'Beyyine', arabicName: 'البينة', englishName: 'The Clear Proof', verses: 8, revelation: 'Medeni', revelationOrder: 100 },
+    { number: 99, name: 'Zilzal', arabicName: 'الزلزلة', englishName: 'The Earthquake', verses: 8, revelation: 'Medeni', revelationOrder: 93 },
+    { number: 100, name: 'Adiyat', arabicName: 'العاديات', englishName: 'The Courser', verses: 11, revelation: 'Mekki', revelationOrder: 14 },
+    { number: 101, name: 'Karia', arabicName: 'القارعة', englishName: 'The Calamity', verses: 11, revelation: 'Mekki', revelationOrder: 30 },
+    { number: 102, name: 'Tekasur', arabicName: 'التكاثر', englishName: 'The Rivalry in world increase', verses: 8, revelation: 'Mekki', revelationOrder: 16 },
+    { number: 103, name: 'Asr', arabicName: 'العصر', englishName: 'The Declining Day', verses: 3, revelation: 'Mekki', revelationOrder: 13 },
+    { number: 104, name: 'Humeze', arabicName: 'الهمزة', englishName: 'The Traducer', verses: 9, revelation: 'Mekki', revelationOrder: 32 },
+    { number: 105, name: 'Fil', arabicName: 'الفيل', englishName: 'The Elephant', verses: 5, revelation: 'Mekki', revelationOrder: 19 },
+    { number: 106, name: 'Kureys', arabicName: 'قريش', englishName: 'Quraysh', verses: 4, revelation: 'Mekki', revelationOrder: 29 },
+    { number: 107, name: 'Maun', arabicName: 'الماعون', englishName: 'The Small Kindnesses', verses: 7, revelation: 'Mekki', revelationOrder: 17 },
+    { number: 108, name: 'Kevser', arabicName: 'الكوثر', englishName: 'The Abundance', verses: 3, revelation: 'Mekki', revelationOrder: 15 },
+    { number: 109, name: 'Kafirun', arabicName: 'الكافرون', englishName: 'The Disbelievers', verses: 6, revelation: 'Mekki', revelationOrder: 18 },
+    { number: 110, name: 'Nasr', arabicName: 'النصر', englishName: 'The Divine Support', verses: 3, revelation: 'Medeni', revelationOrder: 114 },
+    { number: 111, name: 'Tebbet', arabicName: 'المسد', englishName: 'The Palm Fiber', verses: 5, revelation: 'Mekki', revelationOrder: 6 },
+    { number: 112, name: 'Ihlas', arabicName: 'الإخلاص', englishName: 'The Sincerity', verses: 4, revelation: 'Mekki', revelationOrder: 22 },
+    { number: 113, name: 'Felak', arabicName: 'الفلق', englishName: 'The Daybreak', verses: 5, revelation: 'Mekki', revelationOrder: 20 },
+    { number: 114, name: 'Nas', arabicName: 'الناس', englishName: 'The Mankind', verses: 6, revelation: 'Mekki', revelationOrder: 21 },
+  ];
+
+  const filePath = path.join(DATA_DIR, 'surahs.json');
+  fs.writeFileSync(filePath, JSON.stringify(fullSurahList, null, 2));
+  console.log(`✓ Sure bilgileri kaydedildi: ${filePath}`);
+}
+
+/**
+ * Ana fonksiyon
+ */
+async function main() {
+  console.log('='.repeat(50));
+  console.log('  KURAN REHBERI - Veri Indirme Scripti');
+  console.log('='.repeat(50));
+  console.log();
+
+  // Dizinleri olustur
+  const dirs = ['translations', 'morphology'];
+  for (const dir of dirs) {
+    const dirPath = path.join(DATA_DIR, dir);
+    if (!fs.existsSync(dirPath)) {
+      fs.mkdirSync(dirPath, { recursive: true });
+      console.log(`Dizin olusturuldu: ${dirPath}`);
+    }
+  }
+  console.log();
+
+  // Sure bilgilerini kaydet
+  saveSurahInfo();
+  console.log();
+
+  // Cevirileri indir
+  console.log('--- Ceviriler Indiriliyor ---');
+  for (const [id, name] of Object.entries(TRANSLATIONS)) {
+    await downloadTranslation(id, name);
+    // Rate limiting
+    await new Promise(resolve => setTimeout(resolve, 500));
+  }
+  console.log();
+
+  // Morfoloji verilerini indir
+  console.log('--- Morfoloji Verileri Indiriliyor ---');
+  await downloadMorphology();
+  console.log();
+
+  console.log('='.repeat(50));
+  console.log('  Tum veriler indirildi!');
+  console.log('='.repeat(50));
+}
+
+main().catch(console.error);

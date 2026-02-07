@@ -1,0 +1,63 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Google Fonts - Amiri (Arabic) */
+@import url('https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&display=swap');
+
+:root {
+  --foreground-rgb: 0, 0, 0;
+  --background-start-rgb: 250, 250, 250;
+  --background-end-rgb: 255, 255, 255;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --foreground-rgb: 255, 255, 255;
+    --background-start-rgb: 17, 24, 39;
+    --background-end-rgb: 31, 41, 55;
+  }
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  background: linear-gradient(
+      to bottom,
+      transparent,
+      rgb(var(--background-end-rgb))
+    )
+    rgb(var(--background-start-rgb));
+}
+
+/* Arabic text styling */
+.arabic-text {
+  font-family: 'Amiri', 'Traditional Arabic', serif;
+  direction: rtl;
+  text-align: right;
+  line-height: 2;
+}
+
+/* Verse number badge */
+.verse-number {
+  @apply inline-flex items-center justify-center w-8 h-8 rounded-full bg-primary-100 text-primary-700 text-sm font-medium;
+}
+
+/* Word highlight on hover */
+.word-highlight:hover {
+  @apply bg-yellow-100 rounded cursor-pointer;
+}
+
+/* Root word badge */
+.root-badge {
+  @apply inline-block px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-700;
+}
+
+/* Translation card */
+.translation-card {
+  @apply p-4 border rounded-lg hover:shadow-md transition-shadow;
+}
+
+/* Search highlight */
+.search-highlight {
+  @apply bg-yellow-200 px-0.5 rounded;
+}
