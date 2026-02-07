@@ -51,8 +51,8 @@ initDatabase().then(() => {
     res.status(500).json({ error: 'Bir hata olustu', message: err.message });
   });
 
-  app.listen(PORT, () => {
-    console.log('Kuran Rehberi API calisiyor: http://localhost:' + PORT);
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log('Kuran Rehberi API calisiyor: port ' + PORT);
   });
 }).catch(err => {
   console.error('Veritabani baslatilamadi:', err);
