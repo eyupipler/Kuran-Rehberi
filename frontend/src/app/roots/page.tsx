@@ -23,6 +23,8 @@ export default function RootsPage() {
   const limit = 50;
 
   useEffect(() => {
+    if (searchQuery) return; // Arama varsa otomatik yükleme
+
     setLoading(true);
 
     let url = `${API_BASE}/roots?limit=${limit}&offset=${page * limit}&sort=${sortBy}`;
@@ -35,10 +37,10 @@ export default function RootsPage() {
         setLoading(false);
       })
       .catch((err) => {
-        console.error('Kokler yuklenemedi:', err);
+        console.error('Kökler yüklenemedi:', err);
         setLoading(false);
       });
-  }, [sortBy, page]);
+  }, [sortBy, page, searchQuery]);
 
   const handleSearch = async () => {
     if (searchQuery.length < 1) return;
@@ -50,7 +52,7 @@ export default function RootsPage() {
       setRoots(data.results);
       setTotal(data.results.length);
     } catch (error) {
-      console.error('Arama hatasi:', error);
+      console.error('Arama hatası:', error);
     } finally {
       setLoading(false);
     }
@@ -59,18 +61,16 @@ export default function RootsPage() {
   const clearSearch = () => {
     setSearchQuery('');
     setPage(0);
-    // Trigger reload
-    setSortBy(sortBy);
   };
 
   return (
     <div>
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-          Kelime Kokleri
+          Kelime Kökleri
         </h1>
         <p className="text-gray-600 dark:text-gray-300">
-          Kuran'daki kelime koklerini kesfet ve her kokun nerede gectigini gor
+          Kuran'daki kelime köklerini keşfet ve her kökün nerede geçtiğini gör
         </p>
       </div>
 
@@ -83,8 +83,8 @@ export default function RootsPage() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-              placeholder="Kok ara (Arapca veya anlami)..."
-              className="flex-1 px-4 py-2 border rounded-lg"
+              placeholder="Kök ara (Arapça, Latin veya Türkçe anlam)..."
+              className="flex-1 px-4 py-2 border rounded-lg text-gray-900 dark:text-white bg-white dark:bg-gray-700"
             />
             <button
               onClick={handleSearch}
@@ -109,17 +109,17 @@ export default function RootsPage() {
               setSortBy(e.target.value as 'count' | 'alpha');
               setPage(0);
             }}
-            className="px-4 py-2 border rounded-lg bg-white dark:bg-gray-700"
+            className="px-4 py-2 border rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
           >
-            <option value="count">En Cok Gecen</option>
+            <option value="count">En Çok Geçen</option>
             <option value="alpha">Alfabetik</option>
           </select>
         </div>
       </div>
 
-      {/* Istatistik */}
+      {/* İstatistik */}
       <p className="mb-4 text-gray-600 dark:text-gray-400">
-        Toplam <strong>{total}</strong> benzersiz kok
+        Toplam <strong>{total}</strong> benzersiz kök
       </p>
 
       {loading ? (
@@ -128,7 +128,7 @@ export default function RootsPage() {
         </div>
       ) : (
         <>
-          {/* Kok Listesi */}
+          {/* Kök Listesi */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {roots.map((root) => (
               <Link
@@ -147,11 +147,13 @@ export default function RootsPage() {
                 {root.rootLatin && (
                   <p className="text-sm text-gray-500 mb-1">{root.rootLatin}</p>
                 )}
+                {/* Türkçe anlam göster */}
                 {root.meaningTr && (
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                  <p className="text-sm text-primary-600 dark:text-primary-400 font-medium">
                     {root.meaningTr}
                   </p>
                 )}
+                {/* İngilizce anlam (Türkçe yoksa) */}
                 {root.meaningEn && !root.meaningTr && (
                   <p className="text-sm text-gray-600 dark:text-gray-400">
                     {root.meaningEn}
@@ -161,6 +163,13 @@ export default function RootsPage() {
             ))}
           </div>
 
+          {/* Sonuç yoksa */}
+          {roots.length === 0 && (
+            <div className="text-center py-12 text-gray-500">
+              {searchQuery ? `"${searchQuery}" için sonuç bulunamadı` : 'Kök bulunamadı'}
+            </div>
+          )}
+
           {/* Sayfalama */}
           {!searchQuery && total > limit && (
             <div className="flex justify-center gap-2 mt-8">
@@ -169,7 +178,7 @@ export default function RootsPage() {
                 disabled={page === 0}
                 className="px-4 py-2 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
               >
-                Onceki
+                Önceki
               </button>
               <span className="px-4 py-2 text-gray-600 dark:text-gray-400">
                 Sayfa {page + 1} / {Math.ceil(total / limit)}

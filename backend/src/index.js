@@ -14,9 +14,9 @@ app.use(cors());
 app.use(compression());
 app.use(express.json());
 
-// Veritabanini baslat ve sonra route'lari yukle
+// Veritabanını başlat ve sonra route'ları yükle
 initDatabase().then(() => {
-  console.log('Veritabani yuklendi.');
+  console.log('Veritabanı yüklendi.');
 
   // Routes
   const surahRoutes = require('./routes/surahs');
@@ -48,12 +48,12 @@ initDatabase().then(() => {
 
   app.use((err, req, res, next) => {
     console.error(err.stack);
-    res.status(500).json({ error: 'Bir hata olustu', message: err.message });
+    res.status(500).json({ error: 'Bir hata oluştu', message: err.message });
   });
 
   app.listen(PORT, '0.0.0.0', () => {
-    console.log('Kuran Rehberi API calisiyor: port ' + PORT);
+    console.log('Kuran Rehberi API çalışıyor: port ' + PORT);
   });
 }).catch(err => {
-  console.error('Veritabani baslatilamadi:', err);
+  console.error('Veritabanı başlatılamadı:', err);
 });

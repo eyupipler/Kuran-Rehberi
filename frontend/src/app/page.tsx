@@ -28,7 +28,7 @@ export default function Home() {
         setLoading(false);
       })
       .catch((err) => {
-        console.error('Sureler yuklenemedi:', err);
+        console.error('Sureler yüklenemedi:', err);
         setLoading(false);
       });
   }, []);
@@ -54,10 +54,10 @@ export default function Home() {
     <div>
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-          Kuran-i Kerim
+          Kuran-ı Kerim
         </h1>
         <p className="text-gray-600 dark:text-gray-300">
-          114 sure, 6236 ayet - Kelime koku analizi ve coklu ceviri destegi
+          114 sure, 6236 ayet - Kelime kökü analizi ve çoklu çeviri desteği
         </p>
       </div>
 
@@ -65,15 +65,15 @@ export default function Home() {
       <div className="flex flex-wrap gap-4 mb-6">
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-            Siralama
+            Sıralama
           </label>
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as 'number' | 'revelation')}
             className="border rounded-md px-3 py-2 bg-white dark:bg-gray-700"
           >
-            <option value="number">Sure Sirasina Gore</option>
-            <option value="revelation">Inis Sirasina Gore</option>
+            <option value="number">Sure Sırasına Göre</option>
+            <option value="revelation">İniş Sırasına Göre</option>
           </select>
         </div>
         <div>
@@ -85,7 +85,7 @@ export default function Home() {
             onChange={(e) => setFilter(e.target.value as 'all' | 'Mekki' | 'Medeni')}
             className="border rounded-md px-3 py-2 bg-white dark:bg-gray-700"
           >
-            <option value="all">Tumu</option>
+            <option value="all">Tümü</option>
             <option value="Mekki">Mekki Sureler</option>
             <option value="Medeni">Medeni Sureler</option>
           </select>
@@ -128,7 +128,7 @@ export default function Home() {
                 {surah.revelationType}
               </span>
               {sortBy === 'revelation' && (
-                <span className="text-xs">Inis: {surah.revelationOrder}</span>
+                <span className="text-xs">İniş: {surah.revelationOrder}</span>
               )}
             </div>
           </Link>

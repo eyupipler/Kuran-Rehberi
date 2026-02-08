@@ -1,34 +1,34 @@
 # Kuran Rehberi
 
-Kapsamli bir Kuran arastirma platformu - kelime koku analizi, coklu ceviriler ve morfolojik arama ozellikleri.
+Kapsamlı bir Kuran araştırma platformu - kelime kökü analizi, çoklu çeviriler ve morfolojik arama özellikleri.
 
-## Ozellikler
+## Özellikler
 
-- 100+ farkli tercuman/ceviri destegi (9 Turkce, 5 Ingilizce meal)
-- Kelime koku (root word) analizi
-- Morfolojik arama (kelime kokune gore arama)
-- Ayetlerin farkli meallerde karsilastirmasi
-- Kelime bazinda gramer bilgisi
-- Sure ve ayet bazli gezinme
-- Full-text arama (meallerde ve Arapca metinde)
+- 100+ farklı tercüman/çeviri desteği (9 Türkçe, 5 İngilizce meal)
+- Kelime kökü (root word) analizi
+- Morfolojik arama (kelime köküne göre arama)
+- Ayetlerin farklı meallerde karşılaştırması
+- Kelime bazında gramer bilgisi
+- Sure ve ayet bazlı gezinme
+- Full-text arama (meallerde ve Arapça metinde)
 
-## Ekran Goruntuleri
+## Ekran Görüntüleri
 
-Proje calistirildiginda su sayfalari goreceksiniz:
-- **Ana Sayfa**: 114 surenin listesi (siralama ve filtreleme)
-- **Sure Sayfasi**: Secilen surenin ayetleri ve meali
-- **Ayet Detay**: Tum ceviriler + kelime kelime analiz
-- **Kelime Kokleri**: Kuran'daki tum koklerin listesi
-- **Kok Detay**: Bir kokun gectigi tum yerler ve turetilmis formlar
-- **Arama**: Meallerde ve Arapca metinde arama
+Proje çalıştırıldığında şu sayfaları göreceksiniz:
+- **Ana Sayfa**: 114 surenin listesi (sıralama ve filtreleme)
+- **Sure Sayfası**: Seçilen surenin ayetleri ve meali
+- **Ayet Detay**: Tüm çeviriler + kelime kelime analiz
+- **Kelime Kökleri**: Kuran'daki tüm köklerin listesi
+- **Kök Detay**: Bir kökün geçtiği tüm yerler ve türetilmiş formlar
+- **Arama**: Meallerde ve Arapça metinde arama
 
-## Veri Kaynaklari
+## Veri Kaynakları
 
-| Kaynak | Icerik | Lisans |
+| Kaynak | İçerik | Lisans |
 |--------|--------|--------|
-| [Tanzil.net](https://tanzil.net) | Kuran metni, 120+ ceviri | CC-BY 3.0 |
-| [Quranic Arabic Corpus](https://corpus.quran.com) | Morfoloji, kelime kokleri | GNU GPL |
-| [Quran API](https://github.com/fawazahmed0/quran-api) | 440+ ceviri, 90+ dil | Acik |
+| [Tanzil.net](https://tanzil.net) | Kuran metni, 120+ çeviri | CC-BY 3.0 |
+| [Quranic Arabic Corpus](https://corpus.quran.com) | Morfoloji, kelime kökleri | GNU GPL |
+| [Quran API](https://github.com/fawazahmed0/quran-api) | 440+ çeviri, 90+ dil | Açık |
 
 ## Teknoloji
 
@@ -37,19 +37,19 @@ Proje calistirildiginda su sayfalari goreceksiniz:
 - **Database**: SQLite (better-sqlite3)
 - **API**: RESTful JSON API
 
-## Proje Yapisi
+## Proje Yapısı
 
 ```
 Kuran Rehberi/
-├── data/                    # Indirilen veriler
-│   ├── translations/        # Ceviri JSON dosyalari
+├── data/                    # İndirilen veriler
+│   ├── translations/        # Çeviri JSON dosyaları
 │   ├── morphology/          # Morfoloji verileri
 │   └── surahs.json          # Sure bilgileri
 ├── backend/
 │   ├── src/
-│   │   ├── db/              # Veritabani islemleri
-│   │   │   ├── schema.sql   # DB semasi
-│   │   │   ├── init.js      # DB olusturma
+│   │   ├── db/              # Veritabanı işlemleri
+│   │   │   ├── schema.sql   # DB şeması
+│   │   │   ├── init.js      # DB oluşturma
 │   │   │   └── import.js    # Veri import
 │   │   ├── routes/          # API endpoint'leri
 │   │   │   ├── surahs.js
@@ -57,34 +57,34 @@ Kuran Rehberi/
 │   │   │   ├── search.js
 │   │   │   └── roots.js
 │   │   └── index.js         # Express sunucu
-│   └── kuran.db             # SQLite veritabani
+│   └── kuran.db             # SQLite veritabanı
 ├── frontend/
 │   └── src/
-│       ├── app/             # Next.js sayfalari
+│       ├── app/             # Next.js sayfaları
 │       │   ├── page.tsx                    # Ana sayfa
 │       │   ├── surah/[id]/page.tsx         # Sure detay
 │       │   ├── verse/[surahId]/[verseNumber]/page.tsx
 │       │   ├── search/page.tsx             # Arama
-│       │   ├── roots/page.tsx              # Kok listesi
-│       │   └── roots/[root]/page.tsx       # Kok detay
+│       │   ├── roots/page.tsx              # Kök listesi
+│       │   └── roots/[root]/page.tsx       # Kök detay
 │       └── lib/api.ts       # API client
 └── scripts/
     └── download-data.js     # Veri indirme scripti
 ```
 
-## Kurulum (Adim Adim)
+## Kurulum (Adım Adım)
 
 ### 1. Gereksinimler
 - Node.js 18+
 - npm veya yarn
 
-### 2. Verileri Indir
+### 2. Verileri İndir
 ```bash
 cd scripts
 node download-data.js
 ```
-Bu islem:
-- 16 farkli ceviriyi indirir (9 Turkce, 5 Ingilizce, 2 Arapca)
+Bu işlem:
+- 16 farklı çeviriyi indirir (9 Türkçe, 5 İngilizce, 2 Arapça)
 - Morfoloji verilerini indirir
 - Sure bilgilerini kaydeder
 
@@ -93,16 +93,16 @@ Bu islem:
 cd backend
 npm install
 
-# Veritabanini olustur
+# Veritabanını oluştur
 npm run init-db
 
 # Verileri import et
 npm run import-data
 
-# Sunucuyu baslat
+# Sunucuyu başlat
 npm run dev
 ```
-Backend http://localhost:3001 adresinde calisacak.
+Backend http://localhost:3001 adresinde çalışacak.
 
 ### 4. Frontend Kurulumu
 ```bash
@@ -110,62 +110,62 @@ cd frontend
 npm install
 npm run dev
 ```
-Frontend http://localhost:3000 adresinde calisacak.
+Frontend http://localhost:3000 adresinde çalışacak.
 
-## API Dokumantasyonu
+## API Dokümantasyonu
 
 ### Sureler
 ```
-GET /api/surahs              # Tum sureler
+GET /api/surahs              # Tüm sureler
 GET /api/surahs/:id          # Belirli sure
 GET /api/surahs/:id/verses   # Surenin ayetleri
-  ?translator=tr.diyanet     # Ceviri secimi
+  ?translator=tr.diyanet     # Çeviri seçimi
 ```
 
 ### Ayetler
 ```
 GET /api/verses/:surahId/:verseNumber
-  # Ayet detayi + tum ceviriler + kelime analizi
+  # Ayet detayı + tüm çeviriler + kelime analizi
 ```
 
 ### Arama
 ```
 GET /api/search?q=kelime     # Meallerde ara
-  &translator=tr.diyanet     # Tercuman filtresi
+  &translator=tr.diyanet     # Tercüman filtresi
   &language=tr               # Dil filtresi
 
-GET /api/search/arabic?q=word  # Arapcada ara
-GET /api/search/translators    # Tercuman listesi
+GET /api/search/arabic?q=word  # Arapçada ara
+GET /api/search/translators    # Tercüman listesi
 ```
 
-### Kelime Kokleri
+### Kelime Kökleri
 ```
-GET /api/roots               # Tum kokler
-  ?sort=count|alpha          # Siralama
-GET /api/roots/:root         # Kok detayi
-GET /api/roots/search/:query # Kok arama
+GET /api/roots               # Tüm kökler
+  ?sort=count|alpha          # Sıralama
+GET /api/roots/:root         # Kök detayı
+GET /api/roots/search/:query # Kök arama
 ```
 
-## Gelecek Ozellikler (Yol Haritasi)
+## Gelecek Özellikler (Yol Haritası)
 
-- [ ] Tefsir destegi
-- [ ] Ses/Tilavet ozelligi
-- [ ] Kullanici hesaplari ve favoriler
-- [ ] Ayet karsilastirma araci
-- [ ] Konu bazli indeks
+- [ ] Tefsir desteği
+- [ ] Ses/Tilavet özelliği
+- [ ] Kullanıcı hesapları ve favoriler
+- [ ] Ayet karşılaştırma aracı
+- [ ] Konu bazlı indeks
 - [ ] Mobil uygulama (React Native)
 - [ ] Offline destek (PWA)
 
-## Katkida Bulunma
+## Katkıda Bulunma
 
-Pull request'ler memnuniyetle karsilanir. Buyuk degisiklikler icin once bir issue aciniz.
+Pull request'ler memnuniyetle karşılanır. Büyük değişiklikler için önce bir issue açınız.
 
 ## Lisans
 
 MIT License
 
-## Tesekkurler
+## Teşekkürler
 
-- [Tanzil.net](https://tanzil.net) - Kuran metni ve ceviriler
+- [Tanzil.net](https://tanzil.net) - Kuran metni ve çeviriler
 - [Quranic Arabic Corpus](https://corpus.quran.com) - Morfoloji verileri
-- [fawazahmed0/quran-api](https://github.com/fawazahmed0/quran-api) - Ceviri API
+- [fawazahmed0/quran-api](https://github.com/fawazahmed0/quran-api) - Çeviri API

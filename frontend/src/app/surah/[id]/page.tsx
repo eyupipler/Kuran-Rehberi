@@ -12,12 +12,24 @@ interface Surah {
   totalVerses: number;
 }
 
+interface Word {
+  arabicWord: string;
+  position: number;
+  partOfSpeech: string;
+  lemma: string;
+  translationTr: string | null;
+  root: string | null;
+  rootLatin: string | null;
+  rootMeaningTr: string | null;
+}
+
 interface Verse {
   id: number;
   verseNumber: number;
   arabicText: string;
   translation?: string;
   translatorName?: string;
+  words?: Word[];
 }
 
 interface Translator {
@@ -36,7 +48,7 @@ export default function SurahPage() {
   const [selectedTranslator, setSelectedTranslator] = useState('tr.diyanet');
   const [loading, setLoading] = useState(true);
 
-  // Tercumanlari yukle
+  // Tercümanları yükle
   useEffect(() => {
     fetch(`${API_BASE}/search/translators`)
       .then((res) => res.json())
@@ -44,7 +56,7 @@ export default function SurahPage() {
       .catch(console.error);
   }, []);
 
-  // Sure ve ayetleri yukle
+  // Sure ve ayetleri yükle
   useEffect(() => {
     if (!surahId) return;
 
@@ -57,7 +69,7 @@ export default function SurahPage() {
         setLoading(false);
       })
       .catch((err) => {
-        console.error('Sure yuklenemedi:', err);
+        console.error('Sure yüklenemedi:', err);
         setLoading(false);
       });
   }, [surahId, selectedTranslator]);
@@ -71,15 +83,15 @@ export default function SurahPage() {
   }
 
   if (!surah) {
-    return <div className="text-center py-12">Sure bulunamadi</div>;
+    return <div className="text-center py-12">Sure bulunamadı</div>;
   }
 
   return (
     <div>
-      {/* Baslik */}
+      {/* Başlık */}
       <div className="mb-8 text-center">
         <Link href="/" className="text-primary-600 hover:underline text-sm mb-4 inline-block">
-          &larr; Surelere Don
+          &larr; Surelere Dön
         </Link>
         <h1 className="text-4xl font-arabic text-gray-900 dark:text-white mb-2">
           {surah.arabicName}
@@ -90,7 +102,7 @@ export default function SurahPage() {
         <p className="text-gray-500 mt-2">{surah.totalVerses} ayet</p>
       </div>
 
-      {/* Tercuman Secimi */}
+      {/* Tercüman Seçimi */}
       <div className="mb-6 flex flex-wrap items-center gap-4">
         <label className="font-medium text-gray-700 dark:text-gray-300">Meal:</label>
         <select
@@ -98,7 +110,7 @@ export default function SurahPage() {
           onChange={(e) => setSelectedTranslator(e.target.value)}
           className="border rounded-md px-4 py-2 bg-white dark:bg-gray-700 min-w-[250px]"
         >
-          <optgroup label="Turkce">
+          <optgroup label="Türkçe">
             {translators
               .filter((t) => t.language === 'tr')
               .map((t) => (
@@ -107,7 +119,7 @@ export default function SurahPage() {
                 </option>
               ))}
           </optgroup>
-          <optgroup label="Ingilizce">
+          <optgroup label="İngilizce">
             {translators
               .filter((t) => t.language === 'en')
               .map((t) => (
@@ -135,7 +147,7 @@ export default function SurahPage() {
             key={verse.id}
             className="p-6 border rounded-lg bg-white dark:bg-gray-800 hover:shadow-md transition-shadow"
           >
-            {/* Arapca */}
+            {/* Arapça */}
             <div className="flex items-start gap-4 mb-4">
               <span className="verse-number flex-shrink-0">{verse.verseNumber}</span>
               <p className="text-2xl font-arabic leading-loose text-gray-900 dark:text-white arabic-text flex-1">
@@ -143,7 +155,7 @@ export default function SurahPage() {
               </p>
             </div>
 
-            {/* Ceviri */}
+            {/* Çeviri */}
             {verse.translation && (
               <div className="pl-12 border-l-2 border-primary-200">
                 <p className="text-gray-700 dark:text-gray-300 leading-relaxed">
@@ -153,13 +165,44 @@ export default function SurahPage() {
               </div>
             )}
 
+            {/* Kelime Kökleri */}
+            {verse.words && verse.words.length > 0 && (
+              <div className="mt-4 pl-12">
+                <div className="flex flex-wrap gap-2">
+                  {verse.words.map((word, idx) => (
+                    <div key={idx} className="group relative">
+                      {word.root ? (
+                        <Link
+                          href={`/roots/${encodeURIComponent(word.root)}`}
+                          className="inline-flex flex-col items-center px-2 py-1 rounded bg-gray-50 dark:bg-gray-700 hover:bg-primary-50 dark:hover:bg-primary-900 transition-colors border border-gray-200 dark:border-gray-600 hover:border-primary-300"
+                        >
+                          <span className="text-lg font-arabic text-gray-800 dark:text-gray-200">{word.arabicWord}</span>
+                          <span className="text-xs text-primary-600 dark:text-primary-400 font-arabic">{word.root}</span>
+                          {(word.translationTr || word.rootMeaningTr) && (
+                            <span className="text-[10px] text-gray-500 dark:text-gray-400 max-w-[80px] truncate">
+                              {word.translationTr || word.rootMeaningTr}
+                            </span>
+                          )}
+                        </Link>
+                      ) : (
+                        <span className="inline-flex flex-col items-center px-2 py-1 rounded bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600">
+                          <span className="text-lg font-arabic text-gray-800 dark:text-gray-200">{word.arabicWord}</span>
+                          <span className="text-xs text-gray-400">-</span>
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Detay Linki */}
             <div className="mt-4 pl-12">
               <Link
                 href={`/verse/${surah.id}/${verse.verseNumber}`}
                 className="text-sm text-primary-600 hover:underline"
               >
-                Kelime analizi ve diger ceviriler &rarr;
+                Tüm çeviriler &rarr;
               </Link>
             </div>
           </div>
@@ -173,7 +216,7 @@ export default function SurahPage() {
             href={`/surah/${surah.id - 1}`}
             className="px-4 py-2 border rounded-md hover:bg-gray-50 dark:hover:bg-gray-700"
           >
-            &larr; Onceki Sure
+            &larr; Önceki Sure
           </Link>
         )}
         <div className="flex-1" />

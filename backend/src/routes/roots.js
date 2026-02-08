@@ -53,12 +53,13 @@ router.get('/:root', (req, res) => {
       FROM roots WHERE root = ? OR root_latin = ?
     `).get(root, root);
 
-    if (!rootInfo) return res.status(404).json({ error: 'Kok bulunamadi' });
+    if (!rootInfo) return res.status(404).json({ error: 'Kök bulunamadı' });
 
     const occurrences = db.prepare(`
       SELECT v.surah_id as surahId, v.verse_number as verseNumber, v.arabic_text as arabicText,
         s.name as surahName, s.arabic_name as surahArabicName,
-        w.arabic_word as word, w.word_position as wordPosition, w.lemma, w.part_of_speech as partOfSpeech
+        w.arabic_word as word, w.word_position as wordPosition, w.lemma,
+        w.part_of_speech as partOfSpeech, w.translation_tr as translationTr
       FROM words w
       JOIN verses v ON v.id = w.verse_id
       JOIN surahs s ON s.id = v.surah_id

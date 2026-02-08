@@ -61,3 +61,40 @@ body {
 .search-highlight {
   @apply bg-yellow-200 px-0.5 rounded;
 }
+
+/* Input text color fix */
+input[type="text"],
+input[type="search"],
+select,
+textarea {
+  color: #000 !important;
+}
+
+input::placeholder {
+  color: #9ca3af !important;
+}
+
+/* Dark mode input */
+@media (prefers-color-scheme: dark) {
+  input[type="text"],
+  input[type="search"],
+  select,
+  textarea {
+    color: #000 !important;
+    background-color: #fff !important;
+  }
+}
+
+/* Word card for verse page */
+.word-card {
+  @apply p-3 bg-white border rounded-lg cursor-pointer transition-all hover:shadow-md hover:border-primary-400;
+}
+
+.word-card.selected {
+  @apply border-primary-500 bg-primary-50 shadow-md;
+}
+
+/* Root occurrence item */
+.root-occurrence {
+  @apply p-4 bg-white border rounded-lg hover:shadow-sm transition-shadow;
+}

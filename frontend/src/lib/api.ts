@@ -1,6 +1,6 @@
 /**
  * API Client
- * Backend ile iletisim icin yardimci fonksiyonlar
+ * Backend ile iletişim için yardımcı fonksiyonlar
  */
 
 // Render.com'daki backend URL'si
@@ -58,11 +58,11 @@ export interface Translator {
 }
 
 /**
- * Tum sureleri getir
+ * Tüm sureleri getir
  */
 export async function getSurahs(): Promise<Surah[]> {
   const res = await fetch(`${API_BASE}/surahs`);
-  if (!res.ok) throw new Error('Sureler yuklenemedi');
+  if (!res.ok) throw new Error('Sureler yüklenemedi');
   return res.json();
 }
 
@@ -71,7 +71,7 @@ export async function getSurahs(): Promise<Surah[]> {
  */
 export async function getSurah(id: number): Promise<Surah> {
   const res = await fetch(`${API_BASE}/surahs/${id}`);
-  if (!res.ok) throw new Error('Sure bulunamadi');
+  if (!res.ok) throw new Error('Sure bulunamadı');
   return res.json();
 }
 
@@ -87,19 +87,19 @@ export async function getSurahVerses(
     : `${API_BASE}/surahs/${surahId}/verses`;
 
   const res = await fetch(url);
-  if (!res.ok) throw new Error('Ayetler yuklenemedi');
+  if (!res.ok) throw new Error('Ayetler yüklenemedi');
   return res.json();
 }
 
 /**
- * Belirli bir ayeti tum cevirileriyle getir
+ * Belirli bir ayeti tüm çevirileriyle getir
  */
 export async function getVerse(
   surahId: number,
   verseNumber: number
 ): Promise<{ verse: Verse; translations: Translation[]; words: Word[] }> {
   const res = await fetch(`${API_BASE}/verses/${surahId}/${verseNumber}`);
-  if (!res.ok) throw new Error('Ayet bulunamadi');
+  if (!res.ok) throw new Error('Ayet bulunamadı');
   return res.json();
 }
 
@@ -111,7 +111,7 @@ export async function getVerseWords(
   verseNumber: number
 ): Promise<{ arabicText: string; words: Word[] }> {
   const res = await fetch(`${API_BASE}/verses/${surahId}/${verseNumber}/words`);
-  if (!res.ok) throw new Error('Kelimeler yuklenemedi');
+  if (!res.ok) throw new Error('Kelimeler yüklenemedi');
   return res.json();
 }
 
@@ -129,12 +129,12 @@ export async function searchTranslations(
   if (options?.offset) params.append('offset', options.offset.toString());
 
   const res = await fetch(`${API_BASE}/search?${params}`);
-  if (!res.ok) throw new Error('Arama yapilamadi');
+  if (!res.ok) throw new Error('Arama yapılamadı');
   return res.json();
 }
 
 /**
- * Arapca metinde arama yap
+ * Arapça metinde arama yap
  */
 export async function searchArabic(
   query: string,
@@ -146,12 +146,12 @@ export async function searchArabic(
   if (offset) params.append('offset', offset.toString());
 
   const res = await fetch(`${API_BASE}/search/arabic?${params}`);
-  if (!res.ok) throw new Error('Arama yapilamadi');
+  if (!res.ok) throw new Error('Arama yapılamadı');
   return res.json();
 }
 
 /**
- * Tercumanlari getir
+ * Tercümanları getir
  */
 export async function getTranslators(language?: string): Promise<Translator[]> {
   const url = language
@@ -159,12 +159,12 @@ export async function getTranslators(language?: string): Promise<Translator[]> {
     : `${API_BASE}/search/translators`;
 
   const res = await fetch(url);
-  if (!res.ok) throw new Error('Tercumanlar yuklenemedi');
+  if (!res.ok) throw new Error('Tercümanlar yüklenemedi');
   return res.json();
 }
 
 /**
- * Kelime koklerini getir
+ * Kelime köklerini getir
  */
 export async function getRoots(
   limit?: number,
@@ -177,12 +177,12 @@ export async function getRoots(
   if (sort) params.append('sort', sort);
 
   const res = await fetch(`${API_BASE}/roots?${params}`);
-  if (!res.ok) throw new Error('Kokler yuklenemedi');
+  if (!res.ok) throw new Error('Kökler yüklenemedi');
   return res.json();
 }
 
 /**
- * Belirli bir kokun detaylarini getir
+ * Belirli bir kökün detaylarını getir
  */
 export async function getRoot(root: string): Promise<{
   root: Root;
@@ -192,15 +192,15 @@ export async function getRoot(root: string): Promise<{
   distribution: any[];
 }> {
   const res = await fetch(`${API_BASE}/roots/${encodeURIComponent(root)}`);
-  if (!res.ok) throw new Error('Kok bulunamadi');
+  if (!res.ok) throw new Error('Kök bulunamadı');
   return res.json();
 }
 
 /**
- * Kok ara
+ * Kök ara
  */
 export async function searchRoots(query: string): Promise<{ query: string; results: Root[] }> {
   const res = await fetch(`${API_BASE}/roots/search/${encodeURIComponent(query)}`);
-  if (!res.ok) throw new Error('Kok aranamadi');
+  if (!res.ok) throw new Error('Kök aranamadı');
   return res.json();
 }

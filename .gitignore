@@ -1,3 +1,8 @@
+# Ignore Windows special file
+nul
+**/nul
+.claude/
+
 # Dependencies
 node_modules/
 .pnp/
@@ -30,5 +35,5 @@ yarn-error.log*
 .DS_Store
 Thumbs.db
 
-# Claude Code
-.claude/
+# Cache
+

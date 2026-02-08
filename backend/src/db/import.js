@@ -6,18 +6,18 @@ const DB_PATH = path.join(__dirname, '..', '..', 'kuran.db');
 const DATA_DIR = path.join(__dirname, '..', '..', '..', 'data');
 
 const TRANSLATORS = {
-  'tr.diyanet': { name: 'Diyanet Isleri', language: 'tr' },
-  'tr.yazir': { name: 'Elmalili Hamdi Yazir', language: 'tr' },
-  'tr.ates': { name: 'Suleyman Ates', language: 'tr' },
-  'tr.bulac': { name: 'Ali Bulac', language: 'tr' },
-  'tr.ozturk': { name: 'Yasar Nuri Ozturk', language: 'tr' },
-  'tr.vakfi': { name: 'Diyanet Vakfi', language: 'tr' },
-  'tr.golpinarli': { name: 'Abdulbaki Golpinarli', language: 'tr' },
+  'tr.diyanet': { name: 'Diyanet İşleri', language: 'tr' },
+  'tr.yazir': { name: 'Elmalılı Hamdi Yazır', language: 'tr' },
+  'tr.ates': { name: 'Süleyman Ateş', language: 'tr' },
+  'tr.bulac': { name: 'Ali Bulaç', language: 'tr' },
+  'tr.ozturk': { name: 'Yaşar Nuri Öztürk', language: 'tr' },
+  'tr.vakfi': { name: 'Diyanet Vakfı', language: 'tr' },
+  'tr.golpinarli': { name: 'Abdülbaki Gölpınarlı', language: 'tr' },
   'en.yusufali': { name: 'Abdullah Yusuf Ali', language: 'en' },
   'en.arberry': { name: 'Arthur John Arberry', language: 'en' },
   'en.haleem': { name: 'Abdel Haleem', language: 'en' },
   'en.kamal': { name: 'Dr Kamal Omar', language: 'en' },
-  'ar.uthmani': { name: 'Arapca (Uthmani)', language: 'ar' },
+  'ar.uthmani': { name: 'Arapça (Uthmani)', language: 'ar' },
 };
 
 async function importData() {
@@ -27,7 +27,7 @@ async function importData() {
 
   const SQL = await initSqlJs();
   if (!fs.existsSync(DB_PATH)) {
-    console.error('DB bulunamadi! Once: npm run init-db');
+    console.error('DB bulunamadı! Önce: npm run init-db');
     return;
   }
 
@@ -46,19 +46,19 @@ async function importData() {
     console.log('  OK:', surahs.length, 'sure');
   }
 
-  // Tercumanlar
-  console.log('\n[2/4] Tercumanlar...');
+  // Tercümanlar
+  console.log('\n[2/4] Tercümanlar...');
   for (const [code, info] of Object.entries(TRANSLATORS)) {
     db.run('INSERT OR REPLACE INTO translators (code, name, language) VALUES (?,?,?)',
       [code, info.name, info.language]);
   }
   console.log('  OK:', Object.keys(TRANSLATORS).length);
 
-  // Ceviriler
-  console.log('\n[3/4] Ceviriler...');
+  // Çeviriler
+  console.log('\n[3/4] Çeviriler...');
   const translationsDir = path.join(DATA_DIR, 'translations');
-  
-  // Once Arapca (ayetler icin)
+
+  // Önce Arapça (ayetler için)
   const arabicFile = path.join(translationsDir, 'ar.uthmani.json');
   if (fs.existsSync(arabicFile)) {
     const content = fs.readFileSync(arabicFile, 'utf-8');
@@ -68,20 +68,20 @@ async function importData() {
         db.run('INSERT OR REPLACE INTO verses (surah_id, verse_number, arabic_text) VALUES (?,?,?)',
           [v.chapter, v.verse, v.text]);
       }
-      console.log('  Arapca:', data.quran.length, 'ayet');
+      console.log('  Arapça:', data.quran.length, 'ayet');
     }
   }
 
-  // Diger ceviriler
+  // Diğer çeviriler
   const files = fs.readdirSync(translationsDir).filter(f => f.endsWith('.json'));
   for (const file of files) {
     const code = file.replace('.json', '');
     if (!TRANSLATORS[code]) continue;
-    
+
     try {
       const content = fs.readFileSync(path.join(translationsDir, file), 'utf-8');
       if (content.length < 100) continue;
-      
+
       const data = JSON.parse(content);
       if (!data.quran) continue;
 
@@ -106,21 +106,127 @@ async function importData() {
     }
   }
 
-  // Morfoloji
-  console.log('\n[4/4] Morfoloji...');
+  // Morfoloji ve Kelimeler
+  console.log('\n[4/4] Morfoloji ve Kelimeler...');
   const morphPath = path.join(DATA_DIR, 'morphology', 'quran-morphology.txt');
   if (fs.existsSync(morphPath)) {
     const content = fs.readFileSync(morphPath, 'utf-8');
     const lines = content.split('\n').filter(l => l.trim() && !l.startsWith('#'));
-    const roots = new Map();
+
+    // Önce kökleri topla ve ekle
+    const rootCounts = new Map();
+    const rootIds = new Map();
+
     for (const line of lines) {
-      const m = line.match(/ROOT:([^\s|]+)/);
-      if (m) roots.set(m[1], (roots.get(m[1]) || 0) + 1);
+      const rootMatch = line.match(/ROOT:([^\s|]+)/);
+      if (rootMatch) {
+        const root = rootMatch[1];
+        rootCounts.set(root, (rootCounts.get(root) || 0) + 1);
+      }
     }
-    for (const [root, cnt] of roots) {
+
+    // Kökleri ekle
+    for (const [root, cnt] of rootCounts) {
       db.run('INSERT OR IGNORE INTO roots (root, occurrence_count) VALUES (?,?)', [root, cnt]);
     }
-    console.log('  OK:', roots.size, 'kok');
+    console.log('  Kökler:', rootCounts.size);
+
+    // Kök ID'lerini al
+    const rootsResult = db.exec('SELECT id, root FROM roots');
+    if (rootsResult.length && rootsResult[0].values.length) {
+      for (const row of rootsResult[0].values) {
+        rootIds.set(row[1], row[0]);
+      }
+    }
+
+    // Verse ID cache
+    const verseIds = new Map();
+    const versesResult = db.exec('SELECT id, surah_id, verse_number FROM verses');
+    if (versesResult.length && versesResult[0].values.length) {
+      for (const row of versesResult[0].values) {
+        verseIds.set(`${row[1]}:${row[2]}`, row[0]);
+      }
+    }
+
+    // Kelimeleri ekle
+    console.log('  Kelimeler ekleniyor...');
+    let wordCount = 0;
+
+    // Kelime bazinda biriktir (segment'leri birlestir)
+    const wordMap = new Map(); // key: surah:verse:word -> { arabicWord, root, lemma, pos }
+
+    // Morfoloji dosyasi formati: surah:ayet:kelime:segment  kelime  POS  features
+    for (const line of lines) {
+      // Format: 1:1:1:1	بِ	P	P|PREF|LEM:ب
+      const parts = line.split('\t');
+      if (parts.length < 3) continue;
+
+      const location = parts[0]; // 1:1:1:1
+      const arabicWord = parts[1];
+      const pos = parts[2];
+      const features = parts[3] || '';
+
+      const locParts = location.split(':');
+      if (locParts.length < 4) continue;
+
+      const [surahId, verseNumber, wordPosition, segmentNum] = locParts;
+      const wordKey = `${surahId}:${verseNumber}:${wordPosition}`;
+
+      // Feature'lari parse et
+      let root = null;
+      let lemma = null;
+
+      const rootMatch = features.match(/ROOT:([^|]+)/);
+      if (rootMatch) root = rootMatch[1];
+
+      const lemmaMatch = features.match(/LEM:([^|]+)/);
+      if (lemmaMatch) lemma = lemmaMatch[1];
+
+      // Ilk segment mi yoksa ekleme mi?
+      if (!wordMap.has(wordKey)) {
+        wordMap.set(wordKey, {
+          surahId: parseInt(surahId),
+          verseNumber: parseInt(verseNumber),
+          wordPosition: parseInt(wordPosition),
+          arabicWord: arabicWord,
+          root: root,
+          lemma: lemma,
+          pos: pos
+        });
+      } else {
+        // Eger bu segment'te root varsa ve oncekinde yoksa, guncelle
+        const existing = wordMap.get(wordKey);
+        existing.arabicWord += arabicWord; // Segment'leri birlestir
+        if (root && !existing.root) existing.root = root;
+        if (lemma && !existing.lemma) existing.lemma = lemma;
+      }
+    }
+
+    console.log('  Toplam benzersiz kelime:', wordMap.size);
+
+    // Kelimeleri veritabanina ekle
+    for (const [key, word] of wordMap) {
+      const verseKey = `${word.surahId}:${word.verseNumber}`;
+      const verseId = verseIds.get(verseKey);
+
+      if (!verseId) continue;
+
+      const rootId = word.root ? rootIds.get(word.root) : null;
+
+      db.run(`INSERT OR REPLACE INTO words (verse_id, word_position, arabic_word, root_id, lemma, part_of_speech)
+              VALUES (?,?,?,?,?,?)`,
+        [verseId, word.wordPosition, word.arabicWord, rootId, word.lemma, word.pos]);
+
+      wordCount++;
+
+      if (wordCount % 10000 === 0) {
+        console.log(`    ${wordCount} kelime eklendi...`);
+      }
+    }
+
+    console.log('  Toplam kelime:', wordCount);
+  } else {
+    console.log('  Morfoloji dosyası bulunamadı!');
   }
 
   // Kaydet

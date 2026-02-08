@@ -30,7 +30,7 @@ export default function SearchPage() {
   const [selectedTranslator, setSelectedTranslator] = useState('');
   const [translators, setTranslators] = useState<Translator[]>([]);
 
-  // Tercumanlari yukle
+  // Tercümanları yükle
   useEffect(() => {
     fetch(`${API_BASE}/search/translators`)
       .then((res) => res.json())
@@ -60,7 +60,7 @@ export default function SearchPage() {
       setResults(data.results);
       setTotal(data.total);
     } catch (error) {
-      console.error('Arama hatasi:', error);
+      console.error('Arama hatası:', error);
     } finally {
       setLoading(false);
     }
@@ -110,7 +110,7 @@ export default function SearchPage() {
               onChange={(e) => setSearchType('arabic')}
               className="mr-2"
             />
-            Arapca Metinde Ara
+            Arapça Metinde Ara
           </label>
         </div>
 
@@ -121,7 +121,7 @@ export default function SearchPage() {
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
             placeholder={
-              searchType === 'arabic' ? 'Arapca kelime girin...' : 'Aranacak kelime...'
+              searchType === 'arabic' ? 'Arapça kelime girin...' : 'Aranacak kelime...'
             }
             className={`flex-1 px-4 py-3 border rounded-lg ${
               searchType === 'arabic' ? 'font-arabic text-right text-xl' : ''
@@ -135,8 +135,8 @@ export default function SearchPage() {
               onChange={(e) => setSelectedTranslator(e.target.value)}
               className="px-4 py-3 border rounded-lg bg-white dark:bg-gray-700"
             >
-              <option value="">Tum Mealler</option>
-              <optgroup label="Turkce">
+              <option value="">Tüm Mealler</option>
+              <optgroup label="Türkçe">
                 {translators
                   .filter((t) => t.language === 'tr')
                   .map((t) => (
@@ -145,7 +145,7 @@ export default function SearchPage() {
                     </option>
                   ))}
               </optgroup>
-              <optgroup label="Ingilizce">
+              <optgroup label="İngilizce">
                 {translators
                   .filter((t) => t.language === 'en')
                   .map((t) => (
@@ -162,7 +162,7 @@ export default function SearchPage() {
             disabled={loading || query.length < 2}
             className="px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50"
           >
-            {loading ? 'Araniyor...' : 'Ara'}
+            {loading ? 'Aranıyor...' : 'Ara'}
           </button>
         </div>
       </div>
@@ -170,7 +170,7 @@ export default function SearchPage() {
       {/* Sonuclar */}
       {total > 0 && (
         <p className="mb-4 text-gray-600 dark:text-gray-400">
-          <strong>{total}</strong> sonuc bulundu
+          <strong>{total}</strong> sonuç bulundu
         </p>
       )}
 
@@ -190,14 +190,14 @@ export default function SearchPage() {
               <span className="text-lg font-arabic">{result.surahArabicName}</span>
             </div>
 
-            {/* Arapca */}
+            {/* Arapça */}
             <p className="text-xl font-arabic arabic-text text-gray-800 dark:text-gray-200 mb-3">
               {searchType === 'arabic'
                 ? highlightText(result.arabicText, query)
                 : result.arabicText}
             </p>
 
-            {/* Ceviri */}
+            {/* Çeviri */}
             {result.translation && (
               <div className="pl-4 border-l-2 border-primary-200">
                 <p className="text-gray-700 dark:text-gray-300">
@@ -214,7 +214,7 @@ export default function SearchPage() {
 
       {query && results.length === 0 && !loading && (
         <div className="text-center py-12 text-gray-500">
-          "{query}" icin sonuc bulunamadi
+          "{query}" için sonuç bulunamadı
         </div>
       )}
     </div>

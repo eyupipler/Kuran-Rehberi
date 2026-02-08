@@ -14,7 +14,7 @@ router.get('/:surahId/:verseNumber', (req, res) => {
       WHERE v.surah_id = ? AND v.verse_number = ?
     `).get(parseInt(surahId), parseInt(verseNumber));
 
-    if (!verse) return res.status(404).json({ error: 'Ayet bulunamadi' });
+    if (!verse) return res.status(404).json({ error: 'Ayet bulunamadı' });
 
     const translations = db.prepare(`
       SELECT t.code as translatorCode, t.name as translatorName, t.language, tr.text
@@ -26,7 +26,8 @@ router.get('/:surahId/:verseNumber', (req, res) => {
 
     const words = db.prepare(`
       SELECT w.word_position as position, w.arabic_word as arabicWord, w.lemma,
-        w.part_of_speech as partOfSpeech, r.root, r.occurrence_count as rootOccurrenceCount
+        w.part_of_speech as partOfSpeech, w.translation_tr as translationTr,
+        r.root, r.occurrence_count as rootOccurrenceCount, r.meaning_tr as rootMeaningTr
       FROM words w LEFT JOIN roots r ON r.id = w.root_id
       WHERE w.verse_id = ? ORDER BY w.word_position
     `).all(verse.id);

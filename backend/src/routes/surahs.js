@@ -27,7 +27,7 @@ router.get('/:id', (req, res) => {
       FROM surahs WHERE id = ?
     `).get(parseInt(req.params.id));
     
-    if (!surah) return res.status(404).json({ error: 'Sure bulunamadi' });
+    if (!surah) return res.status(404).json({ error: 'Sure bulunamadı' });
     res.json(surah);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -41,7 +41,7 @@ router.get('/:id/verses', (req, res) => {
     const { translator } = req.query;
 
     const surah = db.prepare('SELECT * FROM surahs WHERE id = ?').get(parseInt(id));
-    if (!surah) return res.status(404).json({ error: 'Sure bulunamadi' });
+    if (!surah) return res.status(404).json({ error: 'Sure bulunamadı' });
 
     const verses = db.prepare(`
       SELECT id, verse_number as verseNumber, arabic_text as arabicText
@@ -59,6 +59,21 @@ router.get('/:id/verses', (req, res) => {
           verse.translatorName = translatorInfo.name;
         }
       }
+    }
+
+    // Her ayet için kelimeleri ve köklerini getir
+    for (const verse of verses) {
+      const words = db.prepare(`
+        SELECT w.arabic_word as arabicWord, w.word_position as position,
+          w.part_of_speech as partOfSpeech, w.lemma,
+          w.translation_tr as translationTr,
+          r.root, r.root_latin as rootLatin, r.meaning_tr as rootMeaningTr
+        FROM words w
+        LEFT JOIN roots r ON r.id = w.root_id
+        WHERE w.verse_id = ?
+        ORDER BY w.word_position
+      `).all(verse.id);
+      verse.words = words;
     }
 
     res.json({

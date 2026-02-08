@@ -1,2 +1,4 @@
-// API Base URL - Render.com backend
-export const API_BASE = 'https://kuran-rehberi-api.onrender.com/api';
+// API Base URL - Development'ta localhost, Production'da Render.com
+export const API_BASE = process.env.NODE_ENV === 'development'
+  ? 'http://localhost:3001/api'
+  : 'https://kuran-rehberi.onrender.com/api';
