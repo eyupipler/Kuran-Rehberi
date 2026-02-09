@@ -2,6 +2,8 @@
 nul
 **/nul
 .claude/
+HOSTINGER-DEPLOY.md
+HOSTINGER-SHARED-DEPLOY.md
 
 # Dependencies
 node_modules/
@@ -12,7 +14,9 @@ node_modules/
 frontend/.next/
 frontend/out/
 
-# NOT: kuran.db dahil edilecek (17MB, production için gerekli)
+# Database (too large for GitHub, deploy separately)
+*.db
+!backend/kuran.db
 
 # Debug logs
 npm-debug.log*
