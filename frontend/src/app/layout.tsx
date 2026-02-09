@@ -1,10 +1,10 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import Navbar from '@/components/Navbar';
 
-const siteUrl = 'https://kuranrehberi.com'; // Kendi domain'inizi yazın
+const siteUrl = 'https://kuranrehberi.com';
 
 export const metadata: Metadata = {
-  // Temel Meta
   title: {
     default: 'Kuran Rehberi | Yeni Özellikler Eklenecektir - Demo',
     template: '%s | Kuran Rehberi'
@@ -19,8 +19,6 @@ export const metadata: Metadata = {
   authors: [{ name: 'Kuran Rehberi' }],
   creator: 'Kuran Rehberi',
   publisher: 'Kuran Rehberi',
-
-  // Robots & Indexing
   robots: {
     index: true,
     follow: true,
@@ -32,8 +30,6 @@ export const metadata: Metadata = {
       'max-snippet': -1,
     },
   },
-
-  // Open Graph (Facebook, LinkedIn, WhatsApp)
   openGraph: {
     type: 'website',
     locale: 'tr_TR',
@@ -51,8 +47,6 @@ export const metadata: Metadata = {
       },
     ],
   },
-
-  // Twitter Card
   twitter: {
     card: 'summary_large_image',
     title: 'Kuran Rehberi | Kapsamlı Kuran Araştırma Platformu',
@@ -60,15 +54,10 @@ export const metadata: Metadata = {
     images: [`${siteUrl}/og-image.png`],
     creator: '@kuranrehberi',
   },
-
-  // Verification (Google Search Console, Bing, Yandex)
   verification: {
-    google: 'GOOGLE_VERIFICATION_CODE', // Google Search Console'dan alın
+    google: 'GOOGLE_VERIFICATION_CODE',
     yandex: 'YANDEX_VERIFICATION_CODE',
-    // bing: 'BING_VERIFICATION_CODE',
   },
-
-  // Canonical & Alternates
   alternates: {
     canonical: siteUrl,
     languages: {
@@ -76,21 +65,16 @@ export const metadata: Metadata = {
       'en-US': `${siteUrl}/en`,
     },
   },
-
-  // App & Icons
   manifest: '/manifest.json',
   icons: {
     icon: '/favicon.ico',
     shortcut: '/favicon-16x16.png',
     apple: '/apple-touch-icon.png',
   },
-
-  // Other
   category: 'religion',
   classification: 'Islamic Studies, Quran Research',
 };
 
-// JSON-LD Yapılandırılmış Veri (Schema.org)
 const jsonLd = {
   '@context': 'https://schema.org',
   '@type': 'WebSite',
@@ -134,7 +118,6 @@ export default function RootLayout({
   return (
     <html lang="tr">
       <head>
-        {/* JSON-LD Yapılandırılmış Veri */}
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
@@ -143,54 +126,31 @@ export default function RootLayout({
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
         />
-
-        {/* Ek Meta Etiketleri */}
-        <meta name="theme-color" content="#16a34a" />
+        <meta name="theme-color" content="#358a5b" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="Kuran Rehberi" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="format-detection" content="telephone=no" />
-
-        {/* Preconnect for Performance */}
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-
-        {/* DNS Prefetch */}
         <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
       </head>
       <body className="min-h-screen">
-        <nav className="bg-white dark:bg-gray-800 shadow-sm border-b">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between h-16">
-              <div className="flex items-center">
-                <a href="/" className="text-xl font-bold text-primary-700">
-                  Kuran Rehberi
-                </a>
-              </div>
-              <div className="flex items-center space-x-4">
-                <a href="/" className="text-gray-700 dark:text-gray-200 hover:text-primary-600 px-3 py-2">
-                  Sureler
-                </a>
-                <a href="/search" className="text-gray-700 dark:text-gray-200 hover:text-primary-600 px-3 py-2">
-                  Arama
-                </a>
-                <a href="/roots" className="text-gray-700 dark:text-gray-200 hover:text-primary-600 px-3 py-2">
-                  Kelime Kokleri
-                </a>
-              </div>
-            </div>
-          </div>
-        </nav>
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <Navbar />
+
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
           {children}
         </main>
-        <footer className="bg-gray-50 dark:bg-gray-900 border-t mt-12">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 text-center text-gray-500">
-            <p>Kuran Rehberi - Acik Kaynak Kuran Arastirma Platformu</p>
-            <p className="text-sm mt-2">
-              Veriler: <a href="https://tanzil.net" className="text-primary-600 hover:underline">Tanzil.net</a>,{' '}
-              <a href="https://corpus.quran.com" className="text-primary-600 hover:underline">Quranic Arabic Corpus</a>
+
+        <footer className="bg-cream-100 dark:bg-gray-900 border-t border-soft-200 dark:border-gray-700 mt-12">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 text-center">
+            <p className="text-soft-600 dark:text-gray-400 font-medium">
+              Kuran Rehberi
+            </p>
+            <p className="text-sm text-soft-500 dark:text-gray-500 mt-1">
+              Açık Kaynak Kuran Araştırma Platformu
             </p>
           </div>
         </footer>

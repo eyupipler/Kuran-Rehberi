@@ -34,6 +34,17 @@ async function importData() {
   const buffer = fs.readFileSync(DB_PATH);
   const db = new SQL.Database(buffer);
 
+  // Türkçe kelime çevirileri
+  let wordTranslations = {};
+  let rootMeanings = {};
+  const wordTransPath = path.join(DATA_DIR, 'word-translations-tr.json');
+  if (fs.existsSync(wordTransPath)) {
+    const transData = JSON.parse(fs.readFileSync(wordTransPath, 'utf-8'));
+    wordTranslations = transData.translations || {};
+    rootMeanings = transData.rootMeanings || {};
+    console.log('Türkçe çeviriler yüklendi:', Object.keys(wordTranslations).length, 'kelime,', Object.keys(rootMeanings).length, 'kök');
+  }
+
   // Sureler
   console.log('\n[1/4] Sureler...');
   const surahsPath = path.join(DATA_DIR, 'surahs.json');
@@ -125,9 +136,10 @@ async function importData() {
       }
     }
 
-    // Kökleri ekle
+    // Kökleri ekle (Türkçe anlamlarıyla birlikte)
     for (const [root, cnt] of rootCounts) {
-      db.run('INSERT OR IGNORE INTO roots (root, occurrence_count) VALUES (?,?)', [root, cnt]);
+      const meaningTr = rootMeanings[root] || null;
+      db.run('INSERT OR IGNORE INTO roots (root, occurrence_count, meaning_tr) VALUES (?,?,?)', [root, cnt, meaningTr]);
     }
     console.log('  Kökler:', rootCounts.size);
 
@@ -191,14 +203,31 @@ async function importData() {
           arabicWord: arabicWord,
           root: root,
           lemma: lemma,
-          pos: pos
+          pos: pos,
+          segments: [{ arabic: arabicWord, lemma: lemma, pos: pos, root: root }]
         });
       } else {
-        // Eger bu segment'te root varsa ve oncekinde yoksa, guncelle
         const existing = wordMap.get(wordKey);
         existing.arabicWord += arabicWord; // Segment'leri birlestir
+        existing.segments.push({ arabic: arabicWord, lemma: lemma, pos: pos, root: root });
+
+        // Root varsa güncelle
         if (root && !existing.root) existing.root = root;
-        if (lemma && !existing.lemma) existing.lemma = lemma;
+
+        // Ana kelimeyi bul: İsim (N), Fiil (V), veya root'u olan segment'i tercih et
+        // Edat (P), Bağlaç gibi eklerin lemmasını kullanma
+        const isMainPOS = (p) => ['N', 'V', 'ADJ', 'PN', 'ADV'].includes(p);
+        const isPrefixPOS = (p) => ['P', 'CONJ', 'DET', 'PRON', 'EMPH', 'PREV', 'VOC', 'REM', 'IMPV', 'COND', 'NEG', 'CERT', 'FUT', 'EQ', 'RES', 'SUP', 'ANS', 'INC', 'AMD', 'CIRC', 'COM', 'EXP', 'EXH', 'EXL', 'INL', 'INT', 'AVR', 'RSLT', 'RETRACT', 'SUB', 'SUR', 'ACC', 'LOC', 'T', 'REL'].includes(p);
+
+        // Mevcut lemma prefix ise ve yeni segment ana kelime ise, güncelle
+        if (lemma && isMainPOS(pos)) {
+          existing.lemma = lemma;
+          existing.pos = pos;
+        } else if (lemma && root && isPrefixPOS(existing.pos)) {
+          // Önceki prefix, bu segment root'a sahip, güncelle
+          existing.lemma = lemma;
+          existing.pos = pos;
+        }
       }
     }
 
@@ -213,9 +242,17 @@ async function importData() {
 
       const rootId = word.root ? rootIds.get(word.root) : null;
 
-      db.run(`INSERT OR REPLACE INTO words (verse_id, word_position, arabic_word, root_id, lemma, part_of_speech)
-              VALUES (?,?,?,?,?,?)`,
-        [verseId, word.wordPosition, word.arabicWord, rootId, word.lemma, word.pos]);
+      // Türkçe çeviri bul (lemma veya arabic_word ile)
+      let translationTr = null;
+      if (word.lemma && wordTranslations[word.lemma]) {
+        translationTr = wordTranslations[word.lemma];
+      } else if (word.arabicWord && wordTranslations[word.arabicWord]) {
+        translationTr = wordTranslations[word.arabicWord];
+      }
+
+      db.run(`INSERT OR REPLACE INTO words (verse_id, word_position, arabic_word, root_id, lemma, part_of_speech, translation_tr)
+              VALUES (?,?,?,?,?,?,?)`,
+        [verseId, word.wordPosition, word.arabicWord, rootId, word.lemma, word.pos, translationTr]);
 
       wordCount++;
 

@@ -2,31 +2,43 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Google Fonts - Amiri (Arabic) */
-@import url('https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&display=swap');
+/* Google Fonts - Amiri (Arabic) & Inter (UI) */
+@import url('https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Inter:wght@300;400;500;600;700&display=swap');
 
 :root {
-  --foreground-rgb: 0, 0, 0;
-  --background-start-rgb: 250, 250, 250;
-  --background-end-rgb: 255, 255, 255;
+  --foreground-rgb: 55, 65, 81;
+  --background-start-rgb: 254, 253, 251;
+  --background-end-rgb: 250, 245, 235;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --foreground-rgb: 255, 255, 255;
-    --background-start-rgb: 17, 24, 39;
-    --background-end-rgb: 31, 41, 55;
+    --foreground-rgb: 229, 231, 235;
+    --background-start-rgb: 24, 24, 27;
+    --background-end-rgb: 39, 39, 42;
   }
 }
 
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
 body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
   color: rgb(var(--foreground-rgb));
   background: linear-gradient(
-      to bottom,
-      transparent,
-      rgb(var(--background-end-rgb))
-    )
-    rgb(var(--background-start-rgb));
+      180deg,
+      rgb(var(--background-start-rgb)) 0%,
+      rgb(var(--background-end-rgb)) 100%
+    );
+  min-height: 100vh;
+  line-height: 1.6;
 }
 
 /* Arabic text styling */
@@ -34,44 +46,48 @@ body {
   font-family: 'Amiri', 'Traditional Arabic', serif;
   direction: rtl;
   text-align: right;
-  line-height: 2;
+  line-height: 2.2;
 }
 
-/* Verse number badge */
+.font-arabic {
+  font-family: 'Amiri', 'Traditional Arabic', serif;
+}
+
+/* Verse number badge - daha yumuşak */
 .verse-number {
-  @apply inline-flex items-center justify-center w-8 h-8 rounded-full bg-primary-100 text-primary-700 text-sm font-medium;
+  @apply inline-flex items-center justify-center w-8 h-8 rounded-full bg-primary-100 text-primary-700 text-sm font-medium shadow-soft;
 }
 
 /* Word highlight on hover */
 .word-highlight:hover {
-  @apply bg-yellow-100 rounded cursor-pointer;
+  @apply bg-cream-200 rounded-lg cursor-pointer transition-colors duration-200;
 }
 
-/* Root word badge */
+/* Root word badge - daha yumuşak */
 .root-badge {
-  @apply inline-block px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-700;
+  @apply inline-block px-2.5 py-1 text-xs rounded-full bg-primary-100 text-primary-700 font-medium;
 }
 
-/* Translation card */
+/* Translation card - daha yumuşak */
 .translation-card {
-  @apply p-4 border rounded-lg hover:shadow-md transition-shadow;
+  @apply p-5 bg-white dark:bg-gray-800 border border-soft-200 dark:border-gray-700 rounded-xl hover:shadow-soft-md transition-all duration-200;
 }
 
 /* Search highlight */
 .search-highlight {
-  @apply bg-yellow-200 px-0.5 rounded;
+  @apply bg-cream-300 px-1 rounded;
 }
 
-/* Input text color fix */
+/* Input text color fix - daha yumuşak */
 input[type="text"],
 input[type="search"],
 select,
 textarea {
-  color: #000 !important;
+  @apply text-gray-800 bg-white border-soft-200 rounded-lg focus:ring-2 focus:ring-primary-200 focus:border-primary-400 transition-all duration-200;
 }
 
 input::placeholder {
-  color: #9ca3af !important;
+  @apply text-soft-400;
 }
 
 /* Dark mode input */
@@ -80,21 +96,89 @@ input::placeholder {
   input[type="search"],
   select,
   textarea {
-    color: #000 !important;
-    background-color: #fff !important;
+    @apply text-gray-800 bg-white;
   }
 }
 
-/* Word card for verse page */
+/* Word card for verse page - daha yumuşak */
 .word-card {
-  @apply p-3 bg-white border rounded-lg cursor-pointer transition-all hover:shadow-md hover:border-primary-400;
+  @apply p-4 bg-white border border-soft-200 rounded-xl cursor-pointer transition-all duration-200 hover:shadow-soft-md hover:border-primary-300;
 }
 
 .word-card.selected {
-  @apply border-primary-500 bg-primary-50 shadow-md;
+  @apply border-primary-400 bg-primary-50 shadow-soft-md;
 }
 
 /* Root occurrence item */
 .root-occurrence {
-  @apply p-4 bg-white border rounded-lg hover:shadow-sm transition-shadow;
+  @apply p-5 bg-white dark:bg-gray-800 border border-soft-200 dark:border-gray-700 rounded-xl hover:shadow-soft transition-all duration-200;
+}
+
+/* Button styles - daha yumuşak */
+.btn-primary {
+  @apply px-5 py-2.5 bg-primary-500 hover:bg-primary-600 text-white rounded-xl font-medium shadow-soft hover:shadow-soft-md transition-all duration-200;
+}
+
+.btn-secondary {
+  @apply px-5 py-2.5 bg-soft-100 hover:bg-soft-200 text-soft-700 rounded-xl font-medium transition-all duration-200;
+}
+
+/* Card base style */
+.card {
+  @apply bg-white dark:bg-gray-800 border border-soft-200 dark:border-gray-700 rounded-xl shadow-soft;
+}
+
+/* Mobile responsive helpers */
+@media (max-width: 640px) {
+  .arabic-text {
+    font-size: 1.25rem;
+    line-height: 2;
+  }
+
+  .verse-number {
+    @apply w-7 h-7 text-xs;
+  }
+
+  .translation-card {
+    @apply p-4;
+  }
+}
+
+/* Smooth scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-soft-100 rounded;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-soft-300 rounded hover:bg-soft-400;
+}
+
+/* Tab aktif durumu */
+.tab-active {
+  @apply border-primary-500 text-primary-600 font-medium;
+}
+
+.tab-inactive {
+  @apply border-transparent text-soft-500 hover:text-soft-700 hover:border-soft-300;
+}
+
+/* Loading spinner */
+.spinner {
+  @apply animate-spin rounded-full border-2 border-primary-200 border-t-primary-600;
+}
+
+/* Responsive table wrapper */
+.table-responsive {
+  @apply overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0;
+}
+
+/* Focus states - daha yumuşak */
+a:focus-visible,
+button:focus-visible {
+  @apply outline-none ring-2 ring-primary-300 ring-offset-2 rounded-lg;
 }
