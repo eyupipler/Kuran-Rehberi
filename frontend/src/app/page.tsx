@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { API_BASE } from '@/config';
 
+
 interface Surah {
   id: number;
   name: string;
@@ -120,11 +121,10 @@ export default function Home() {
             <div className="mt-3 flex items-center justify-between text-sm text-soft-500 flex-wrap gap-2">
               <span>{surah.totalVerses} ayet</span>
               <span
-                className={`px-2.5 py-1 rounded-full text-xs font-medium ${
-                  surah.revelationType === 'Mekki'
-                    ? 'bg-amber-50 text-amber-600 border border-amber-200'
-                    : 'bg-emerald-50 text-emerald-600 border border-emerald-200'
-                }`}
+                className={`px-2.5 py-1 rounded-full text-xs font-medium ${surah.revelationType === 'Mekki'
+                  ? 'bg-amber-50 text-amber-600 border border-amber-200'
+                  : 'bg-emerald-50 text-emerald-600 border border-emerald-200'
+                  }`}
               >
                 {surah.revelationType}
               </span>

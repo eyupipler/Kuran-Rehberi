@@ -67,6 +67,26 @@ router.get('/:root', (req, res) => {
       ORDER BY v.surah_id, v.verse_number, w.word_position
     `).all(rootInfo.id);
 
+    // Her occurrence'a varsayılan Türkçe meal ekle
+    // Kullanıcıdan gelen tercümanı veya varsayılanı seç
+    // params.translator veya query.translator olabilir, frontend query ile gönderiyor
+    const requestedTranslator = req.query.translator || 'tr.diyanet';
+
+    // Tercüman ID'sini bul
+    const translatorRow = db.prepare('SELECT id, name FROM translators WHERE code = ?').get(requestedTranslator);
+    const translatorId = translatorRow ? translatorRow.id : null;
+
+    if (translatorId) {
+      for (const occ of occurrences) {
+        const verseRow = db.prepare('SELECT id FROM verses WHERE surah_id = ? AND verse_number = ?').get(occ.surahId, occ.verseNumber);
+        if (verseRow) {
+          const trans = db.prepare('SELECT text FROM translations WHERE verse_id = ? AND translator_id = ?').get(verseRow.id, translatorId);
+          occ.verseMealTr = trans ? trans.text : null;
+          occ.translatorName = translatorRow.name; // Hangi tercümanın kullanıldığını da dönelim
+        }
+      }
+    }
+
     const derivedForms = db.prepare(`
       SELECT arabic_word as word, lemma, part_of_speech as partOfSpeech, COUNT(*) as count
       FROM words WHERE root_id = ?

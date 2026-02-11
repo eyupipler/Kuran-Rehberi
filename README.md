@@ -148,13 +148,12 @@ GET /api/roots/search/:query # Kök arama
 
 ## Gelecek Özellikler (Yol Haritası)
 
-- [ ] Tefsir desteği
-- [ ] Ses/Tilavet özelliği
 - [ ] Kullanıcı hesapları ve favoriler
 - [ ] Ayet karşılaştırma aracı
 - [ ] Konu bazlı indeks
 - [ ] Mobil uygulama (React Native)
 - [ ] Offline destek (PWA)
+- [ ] Kur'an analizi yapabilen dil modeli (LLM)
 
 ## Katkıda Bulunma
 

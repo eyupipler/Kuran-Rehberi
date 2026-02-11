@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { API_BASE } from '@/config';
+import { transliterate } from '@/utils/transliteration';
 
 interface SearchResult {
   surahId: number;
@@ -191,10 +192,13 @@ export default function SearchPage() {
             </div>
 
             {/* Arapça */}
-            <p className="text-xl font-arabic arabic-text text-gray-800 dark:text-gray-200 mb-3">
+            <p className="text-xl font-arabic arabic-text text-gray-800 dark:text-gray-200 mb-1">
               {searchType === 'arabic'
                 ? highlightText(result.arabicText, query)
                 : result.arabicText}
+            </p>
+            <p className="text-xs text-gray-400 text-right mb-3">
+              {transliterate(result.arabicText)}
             </p>
 
             {/* Çeviri */}

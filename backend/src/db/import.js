@@ -6,6 +6,7 @@ const DB_PATH = path.join(__dirname, '..', '..', 'kuran.db');
 const DATA_DIR = path.join(__dirname, '..', '..', '..', 'data');
 
 const TRANSLATORS = {
+  // Türkçe tercümanlar
   'tr.diyanet': { name: 'Diyanet İşleri', language: 'tr' },
   'tr.yazir': { name: 'Elmalılı Hamdi Yazır', language: 'tr' },
   'tr.ates': { name: 'Süleyman Ateş', language: 'tr' },
@@ -13,10 +14,42 @@ const TRANSLATORS = {
   'tr.ozturk': { name: 'Yaşar Nuri Öztürk', language: 'tr' },
   'tr.vakfi': { name: 'Diyanet Vakfı', language: 'tr' },
   'tr.golpinarli': { name: 'Abdülbaki Gölpınarlı', language: 'tr' },
+  'tr.parliyan': { name: 'Abdullah Parlıyan', language: 'tr' },
+  'tr.ugur': { name: 'Adem Uğur', language: 'tr' },
+  'tr.hulusi': { name: 'Ahmed Hulusi', language: 'tr' },
+  'tr.varol': { name: 'Ahmet Varol', language: 'tr' },
+  'tr.yavuz': { name: 'Ali Fikri Yavuz', language: 'tr' },
+  'tr.bayrakli': { name: 'Bayraktar Bayraklı', language: 'tr' },
+  'tr.sadak': { name: 'Bekir Sadak', language: 'tr' },
+  'tr.yildirim_celal': { name: 'Celal Yıldırım', language: 'tr' },
+  'tr.kulunkoglu': { name: 'Cemal Külünkoğlu', language: 'tr' },
+  'tr.edip': { name: 'Edip Yüksel', language: 'tr' },
+  'tr.fizilal': { name: 'Fizilal-il Kuran', language: 'tr' },
+  'tr.onan': { name: 'Gültekin Onan', language: 'tr' },
+  'tr.yildirim_harun': { name: 'Harun Yıldırım', language: 'tr' },
+  'tr.cantay': { name: 'Hasan Basri Çantay', language: 'tr' },
+  'tr.hayrat': { name: 'Hayrat Neşriyat', language: 'tr' },
+  'tr.kesir': { name: 'İbn-i Kesir', language: 'tr' },
+  'tr.yorulmaz': { name: 'İlyas Yorulmaz', language: 'tr' },
+  'tr.mihr': { name: 'İskender Ali Mihr', language: 'tr' },
+  'tr.celik': { name: 'Kadri Çelik', language: 'tr' },
+  'tr.esed': { name: 'Muhammed Esed', language: 'tr' },
+  'tr.islamoglu': { name: 'Mustafa İslamoğlu', language: 'tr' },
+  'tr.bilmen': { name: 'Ömer Nasuhi Bilmen', language: 'tr' },
+  'tr.ongut': { name: 'Ömer Öngüt', language: 'tr' },
+  'tr.piris': { name: 'Şaban Piriş', language: 'tr' },
+  'tr.turkmen': { name: 'Sadık Türkmen', language: 'tr' },
+  'tr.kutub': { name: 'Seyyid Kutub', language: 'tr' },
+  'tr.yildirim_suat': { name: 'Suat Yıldırım', language: 'tr' },
+  'tr.tefhim': { name: 'Tefhim-ul Kuran', language: 'tr' },
+  // İngilizce tercümanlar
   'en.yusufali': { name: 'Abdullah Yusuf Ali', language: 'en' },
   'en.arberry': { name: 'Arthur John Arberry', language: 'en' },
   'en.haleem': { name: 'Abdel Haleem', language: 'en' },
   'en.kamal': { name: 'Dr Kamal Omar', language: 'en' },
+  'en.pickthall': { name: 'Mohammad Marmaduke Pickthall', language: 'en' },
+  'en.sahih': { name: 'Sahih International', language: 'en' },
+  // Arapça
   'ar.uthmani': { name: 'Arapça (Uthmani)', language: 'ar' },
 };
 
@@ -42,6 +75,18 @@ async function importData() {
     const transData = JSON.parse(fs.readFileSync(wordTransPath, 'utf-8'));
     wordTranslations = transData.translations || {};
     rootMeanings = transData.rootMeanings || {};
+
+    // Extended kök anlamlarını yükle ve birleştir
+    const extendedPath = path.join(DATA_DIR, 'extended-roots.json');
+    if (fs.existsSync(extendedPath)) {
+      const extendedMeanings = JSON.parse(fs.readFileSync(extendedPath, 'utf-8'));
+      // Mevcut anlamların üzerine yaz (veya birleştir)
+      for (const [root, meanings] of Object.entries(extendedMeanings)) {
+        rootMeanings[root] = meanings;
+      }
+      console.log('Genişletilmiş kök anlamları yüklendi:', Object.keys(extendedMeanings).length, 'adet');
+    }
+
     console.log('Türkçe çeviriler yüklendi:', Object.keys(wordTranslations).length, 'kelime,', Object.keys(rootMeanings).length, 'kök');
   }
 
@@ -139,7 +184,7 @@ async function importData() {
     // Kökleri ekle (Türkçe anlamlarıyla birlikte)
     for (const [root, cnt] of rootCounts) {
       const meaningTr = rootMeanings[root] || null;
-      db.run('INSERT OR IGNORE INTO roots (root, occurrence_count, meaning_tr) VALUES (?,?,?)', [root, cnt, meaningTr]);
+      db.run('INSERT OR REPLACE INTO roots (id, root, occurrence_count, meaning_tr) VALUES ((SELECT id FROM roots WHERE root = ?), ?, ?, ?)', [root, root, cnt, meaningTr]);
     }
     console.log('  Kökler:', rootCounts.size);
 

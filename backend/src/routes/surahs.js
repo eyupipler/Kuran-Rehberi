@@ -61,21 +61,6 @@ router.get('/:id/verses', (req, res) => {
       }
     }
 
-    // Her ayet için kelimeleri ve köklerini getir
-    for (const verse of verses) {
-      const words = db.prepare(`
-        SELECT w.arabic_word as arabicWord, w.word_position as position,
-          w.part_of_speech as partOfSpeech, w.lemma,
-          w.translation_tr as translationTr,
-          r.root, r.root_latin as rootLatin, r.meaning_tr as rootMeaningTr
-        FROM words w
-        LEFT JOIN roots r ON r.id = w.root_id
-        WHERE w.verse_id = ?
-        ORDER BY w.word_position
-      `).all(verse.id);
-      verse.words = words;
-    }
-
     res.json({
       surah: { id: surah.id, name: surah.name, arabicName: surah.arabic_name, totalVerses: surah.total_verses },
       verses

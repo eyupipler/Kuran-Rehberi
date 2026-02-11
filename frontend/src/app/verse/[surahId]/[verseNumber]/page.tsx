@@ -5,6 +5,8 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { API_BASE } from '@/config';
 import { transliterate, transliterateRoot } from '@/utils/transliteration';
+import { useSettings } from '@/context/SettingsContext';
+
 
 interface VerseData {
   id: number;
@@ -77,13 +79,14 @@ export default function VersePage() {
   const params = useParams();
   const surahId = params.surahId as string;
   const verseNumber = params.verseNumber as string;
+  const { settings } = useSettings();
 
   const [verse, setVerse] = useState<VerseData | null>(null);
   const [translations, setTranslations] = useState<Translation[]>([]);
   const [words, setWords] = useState<Word[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedWord, setSelectedWord] = useState<Word | null>(null);
-  const [languageFilter, setLanguageFilter] = useState<string>('tr');
+  const [languageFilter, setLanguageFilter] = useState<string>(settings.defaultLanguage);
 
   useEffect(() => {
     if (!surahId || !verseNumber) return;
@@ -155,6 +158,9 @@ export default function VersePage() {
         <p className="text-2xl sm:text-3xl font-arabic leading-loose text-soft-800 dark:text-white arabic-text">
           {verse.arabicText}
         </p>
+        <p className="text-sm text-soft-400 text-right mt-1">
+          {transliterate(verse.arabicText)}
+        </p>
       </div>
 
       {/* İki Sütunlu Layout: Sol - Kelime Kökleri, Sağ - Çeviriler */}
@@ -183,11 +189,10 @@ export default function VersePage() {
                       {words.map((word) => (
                         <tr
                           key={word.position}
-                          className={`border-b border-soft-100 last:border-b-0 cursor-pointer transition-all duration-200 ${
-                            selectedWord?.position === word.position
-                              ? 'bg-primary-50 dark:bg-primary-900/20'
-                              : 'hover:bg-cream-50 dark:hover:bg-gray-700'
-                          }`}
+                          className={`border-b border-soft-100 last:border-b-0 cursor-pointer transition-all duration-200 ${selectedWord?.position === word.position
+                            ? 'bg-primary-50 dark:bg-primary-900/20'
+                            : 'hover:bg-cream-50 dark:hover:bg-gray-700'
+                            }`}
                           onClick={() => setSelectedWord(word)}
                         >
                           {/* Arapça Kelime + Okunuş */}
@@ -245,11 +250,10 @@ export default function VersePage() {
                   {words.map((word) => (
                     <div
                       key={word.position}
-                      className={`p-4 cursor-pointer transition-all duration-200 ${
-                        selectedWord?.position === word.position
-                          ? 'bg-primary-50 dark:bg-primary-900/20'
-                          : 'hover:bg-cream-50 dark:hover:bg-gray-700'
-                      }`}
+                      className={`p-4 cursor-pointer transition-all duration-200 ${selectedWord?.position === word.position
+                        ? 'bg-primary-50 dark:bg-primary-900/20'
+                        : 'hover:bg-cream-50 dark:hover:bg-gray-700'
+                        }`}
                       onClick={() => setSelectedWord(word)}
                     >
                       <div className="flex items-start justify-between gap-3">
