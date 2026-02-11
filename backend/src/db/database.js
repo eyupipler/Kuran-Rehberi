@@ -18,6 +18,7 @@ async function initDatabase() {
   }
 
   if (!db) {
+    console.log('Veritabanı yolu:', DB_PATH);
     if (fs.existsSync(DB_PATH)) {
       const buffer = fs.readFileSync(DB_PATH);
       db = new SQL.Database(buffer);

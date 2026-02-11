@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { API_BASE } from '@/config';
 import { transliterate, transliterateRoot } from '@/utils/transliteration';
 
-
 interface RootInfo {
   id: number;
   root: string;
@@ -103,19 +102,6 @@ export default function RootDetailClient({ rootParam }: Props) {
   const [showAll, setShowAll] = useState(false);
   const [onlyMeal, setOnlyMeal] = useState(false);
 
-
-  // State for translators
-  const [translators, setTranslators] = useState<{ code: string; name: string }[]>([]);
-  const [selectedTranslator, setSelectedTranslator] = useState<string>('tr.diyanet');
-
-  useEffect(() => {
-    // Fetch available translators
-    fetch(`${API_BASE}/search/translators?language=tr`)
-      .then(res => res.json())
-      .then(data => setTranslators(data))
-      .catch(err => console.error('Tercümanlar yüklenemedi:', err));
-  }, []);
-
   useEffect(() => {
     if (!rootParam) return;
 
@@ -125,7 +111,7 @@ export default function RootDetailClient({ rootParam }: Props) {
     // URL'den gelen parametreyi decode et
     const decodedRoot = decodeURIComponent(rootParam);
 
-    fetch(`${API_BASE}/roots/${encodeURIComponent(decodedRoot)}?translator=${selectedTranslator}`)
+    fetch(`${API_BASE}/roots/${encodeURIComponent(decodedRoot)}`)
       .then((res) => {
         if (!res.ok) {
           throw new Error('Kök bulunamadı');
@@ -149,7 +135,7 @@ export default function RootDetailClient({ rootParam }: Props) {
         setError('Kök bulunamadı veya bir hata oluştu');
         setLoading(false);
       });
-  }, [rootParam, selectedTranslator]);
+  }, [rootParam]);
 
   if (loading) {
     return (
@@ -173,7 +159,6 @@ export default function RootDetailClient({ rootParam }: Props) {
     );
   }
 
-
   const displayedOccurrences = showAll ? occurrences : occurrences.slice(0, 50);
 
   return (
@@ -187,77 +172,39 @@ export default function RootDetailClient({ rootParam }: Props) {
           Kelime Köklerine Dön
         </Link>
 
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-soft-200 dark:border-gray-700 shadow-soft overflow-hidden">
-          {/* Üst Kısım: Kök ve İstatistik */}
-          <div className="p-6 sm:p-8 bg-cream-50 dark:bg-gray-800/50 border-b border-soft-200 dark:border-gray-700">
-            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-6">
-              <div>
-                <div className="flex items-baseline gap-4 mb-2">
-                  <h1 className="text-4xl sm:text-5xl font-arabic text-primary-600 dark:text-primary-400">
-                    {rootInfo.root}
-                  </h1>
-                  <span className="text-xl sm:text-2xl text-soft-500 font-serif italic">
-                    {transliterateRoot(rootInfo.root)}
-                  </span>
-                </div>
-                {rootInfo.rootLatin && (
-                  <p className="text-sm text-soft-400 font-mono">ID: {rootInfo.id}</p>
-                )}
-              </div>
-
-              <div className="flex items-center gap-4 bg-white dark:bg-gray-800 px-4 py-3 rounded-xl border border-soft-200 dark:border-gray-700 shadow-sm">
-                <div className="text-center">
-                  <span className="block text-2xl font-bold text-soft-800 dark:text-white">
-                    {rootInfo.occurrenceCount}
-                  </span>
-                  <span className="text-xs text-soft-500 uppercase tracking-wider">Tekrar</span>
-                </div>
-                <div className="w-px h-8 bg-soft-200 dark:bg-gray-700"></div>
-                <div className="text-center">
-                  <span className="block text-2xl font-bold text-soft-800 dark:text-white">
-                    {derivedForms.length}
-                  </span>
-                  <span className="text-xs text-soft-500 uppercase tracking-wider">Form</span>
-                </div>
-              </div>
+        <div className="bg-white dark:bg-gray-800 p-5 sm:p-6 rounded-xl border border-soft-200 dark:border-gray-700 shadow-soft">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+            <div>
+              <h1 className="text-3xl sm:text-4xl font-arabic text-soft-800 dark:text-white mb-1">
+                {rootInfo.root}
+              </h1>
+              <p className="text-soft-500 text-base sm:text-lg">
+                {transliterateRoot(rootInfo.root)}
+              </p>
+            </div>
+            <div className="text-left sm:text-right">
+              <span className="text-2xl sm:text-3xl font-semibold text-primary-500">
+                {rootInfo.occurrenceCount}
+              </span>
+              <p className="text-sm text-soft-400">kez geçmektedir</p>
             </div>
           </div>
 
-          {/* Sözlük Kısmı */}
-          <div className="p-6 sm:p-8">
-            <h2 className="text-sm font-bold text-soft-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-primary-500"></span>
-              Sözlük Anlamları
-            </h2>
-
-            <div className="space-y-6">
-              {rootInfo.meaningTr ? (
-                <div>
-                  <ul className="space-y-3">
-                    {rootInfo.meaningTr.split(',').map((meaning, index) => (
-                      <li key={index} className="flex gap-3 text-lg sm:text-xl text-soft-800 dark:text-gray-200 leading-relaxed">
-                        <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary-100 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 flex items-center justify-center text-sm font-bold mt-0.5">
-                          {index + 1}
-                        </span>
-                        <span className="capitalize-first">{meaning.trim()}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ) : (
-                <p className="text-soft-500 italic">Türkçe anlam bulunamadı.</p>
+          {(rootInfo.meaningTr || rootInfo.meaningEn) && (
+            <div className="pt-4 border-t border-soft-200 dark:border-gray-700">
+              <h3 className="text-sm font-medium text-soft-500 mb-1">Anlam</h3>
+              {rootInfo.meaningTr && (
+                <p className="text-base sm:text-lg text-primary-600 dark:text-primary-400 font-medium">
+                  <span className="text-xs text-soft-400 mr-1">TR:</span> {rootInfo.meaningTr}
+                </p>
               )}
-
               {rootInfo.meaningEn && (
-                <div className="pt-6 border-t border-soft-100 dark:border-gray-700/50 mt-6">
-                  <p className="text-sm font-medium text-soft-400 mb-2 uppercase tracking-wide">İngilizce</p>
-                  <p className="text-base text-soft-600 dark:text-gray-400 font-serif italic">
-                    {rootInfo.meaningEn}
-                  </p>
-                </div>
+                <p className="text-soft-500 dark:text-gray-400 text-sm mt-1">
+                  <span className="text-xs text-soft-400 mr-1">EN:</span> {rootInfo.meaningEn}
+                </p>
               )}
             </div>
-          </div>
+          )}
         </div>
       </div>
 
@@ -266,28 +213,31 @@ export default function RootDetailClient({ rootParam }: Props) {
         <nav className="flex gap-1 sm:gap-2 min-w-max items-center">
           <button
             onClick={() => setActiveTab('occurrences')}
-            className={`py-2.5 sm:py-3 px-3 sm:px-4 border-b-2 font-medium text-sm sm:text-base transition-colors whitespace-nowrap ${activeTab === 'occurrences'
-              ? 'border-primary-500 text-primary-600'
-              : 'border-transparent text-soft-500 hover:text-soft-700'
-              }`}
+            className={`py-2.5 sm:py-3 px-3 sm:px-4 border-b-2 font-medium text-sm sm:text-base transition-colors whitespace-nowrap ${
+              activeTab === 'occurrences'
+                ? 'border-primary-500 text-primary-600'
+                : 'border-transparent text-soft-500 hover:text-soft-700'
+            }`}
           >
             Ayetler ({occurrences.length})
           </button>
           <button
             onClick={() => setActiveTab('forms')}
-            className={`py-2.5 sm:py-3 px-3 sm:px-4 border-b-2 font-medium text-sm sm:text-base transition-colors whitespace-nowrap ${activeTab === 'forms'
-              ? 'border-primary-500 text-primary-600'
-              : 'border-transparent text-soft-500 hover:text-soft-700'
-              }`}
+            className={`py-2.5 sm:py-3 px-3 sm:px-4 border-b-2 font-medium text-sm sm:text-base transition-colors whitespace-nowrap ${
+              activeTab === 'forms'
+                ? 'border-primary-500 text-primary-600'
+                : 'border-transparent text-soft-500 hover:text-soft-700'
+            }`}
           >
             Türetilmiş Formlar ({derivedForms.length})
           </button>
           <button
             onClick={() => setActiveTab('distribution')}
-            className={`py-2.5 sm:py-3 px-3 sm:px-4 border-b-2 font-medium text-sm sm:text-base transition-colors whitespace-nowrap ${activeTab === 'distribution'
-              ? 'border-primary-500 text-primary-600'
-              : 'border-transparent text-soft-500 hover:text-soft-700'
-              }`}
+            className={`py-2.5 sm:py-3 px-3 sm:px-4 border-b-2 font-medium text-sm sm:text-base transition-colors whitespace-nowrap ${
+              activeTab === 'distribution'
+                ? 'border-primary-500 text-primary-600'
+                : 'border-transparent text-soft-500 hover:text-soft-700'
+            }`}
           >
             Sure Dağılımı
           </button>
@@ -302,19 +252,6 @@ export default function RootDetailClient({ rootParam }: Props) {
               <span className="text-sm text-soft-600 dark:text-gray-300 whitespace-nowrap">Sadece meal</span>
             </label>
           )}
-
-          {/* Tercüman Seçimi Dropdown */}
-          <div className="ml-4 border-l border-soft-200 dark:border-gray-700 pl-4 hidden sm:block">
-            <select
-              value={selectedTranslator}
-              onChange={(e) => setSelectedTranslator(e.target.value)}
-              className="text-sm border-none bg-transparent text-soft-600 dark:text-gray-300 focus:ring-0 cursor-pointer pr-8"
-            >
-              {translators.map(t => (
-                <option key={t.code} value={t.code}>{t.name}</option>
-              ))}
-            </select>
-          </div>
         </nav>
       </div>
 
@@ -344,56 +281,49 @@ export default function RootDetailClient({ rootParam }: Props) {
               ) : (
                 /* Normal Mod */
                 <>
-                  <div className="flex flex-col gap-4">
-                    {/* Üst Bilgi: Sure/Ayet ve Kelime Analizi */}
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-soft-100 dark:border-gray-700 pb-2">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
+                    <div>
                       <Link
                         href={`/verse/${occ.surahId}/${occ.verseNumber}`}
-                        className="font-medium text-primary-500 hover:text-primary-600 transition-colors text-sm sm:text-base inline-flex items-center gap-1"
+                        className="font-medium text-primary-500 hover:text-primary-600 transition-colors text-sm sm:text-base"
                       >
                         {occ.surahName} Suresi {occ.verseNumber}. Ayet
-                        <svg className="w-4 h-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                        </svg>
                       </Link>
-
-                      <div className="flex items-center gap-2 self-end sm:self-auto">
-                        <div className="flex flex-col items-center">
-                          <span className="text-lg sm:text-xl font-arabic bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-200 px-3 py-1.5 rounded-lg">{occ.word}</span>
-                          <span className="text-[10px] sm:text-xs text-soft-400 mt-0.5">{transliterate(occ.word)}</span>
-                          {(occ.translationTr || rootInfo.meaningTr) && (
-                            <span className="text-[10px] sm:text-xs text-primary-500 dark:text-primary-400 mt-0.5">{occ.translationTr || rootInfo.meaningTr}</span>
-                          )}
-                        </div>
-                        {occ.partOfSpeech && (
-                          <span className="root-badge text-[10px] sm:text-xs">{getPartOfSpeechTr(occ.partOfSpeech)}</span>
+                      {occ.verseMealTr && (
+                        <p className="text-xs text-soft-500 dark:text-gray-400 mt-1 line-clamp-2 max-w-xl">
+                          {occ.verseMealTr}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="flex flex-col items-center">
+                        <span className="text-lg sm:text-xl font-arabic bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-200 px-3 py-1.5 rounded-lg">{occ.word}</span>
+                        <span className="text-[10px] sm:text-xs text-soft-400 mt-0.5">{transliterate(occ.word)}</span>
+                        {(occ.translationTr || rootInfo.meaningTr) && (
+                          <span className="text-[10px] sm:text-xs text-primary-500 dark:text-primary-400 mt-0.5">{occ.translationTr || rootInfo.meaningTr}</span>
                         )}
                       </div>
+                      {occ.partOfSpeech && (
+                        <span className="root-badge text-[10px] sm:text-xs">{getPartOfSpeechTr(occ.partOfSpeech)}</span>
+                      )}
                     </div>
-
-                    {/* İçerik: Sol (Meal) - Sağ (Arapça) */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {/* Sol: Türkçe Meal */}
-                      <div className="text-left font-serif">
-                        {occ.verseMealTr ? (
-                          <p className="text-soft-700 dark:text-gray-300 leading-relaxed text-base">
-                            {occ.verseMealTr}
-                          </p>
-                        ) : (
-                          <p className="text-soft-400 italic text-sm">Meal bulunamadı.</p>
-                        )}
-                      </div>
-
-                      {/* Sağ: Arapça Metin */}
-                      <div className="text-right">
-                        <p className="text-xl sm:text-2xl font-arabic arabic-text text-soft-800 dark:text-gray-200 leading-loose" dir="rtl">
-                          {occ.arabicText}
-                        </p>
-                        <p className="text-xs text-soft-400 mt-1 font-latin">
-                          {transliterate(occ.arabicText)}
-                        </p>
-                      </div>
-                    </div>
+                  </div>
+                  <p className="text-lg sm:text-xl font-arabic arabic-text text-soft-700 dark:text-gray-200 leading-loose">
+                    {occ.arabicText}
+                  </p>
+                  <p className="text-xs text-soft-400 text-right mt-0.5 font-latin">
+                    {transliterate(occ.arabicText)}
+                  </p>
+                  <div className="mt-3 text-right">
+                    <Link
+                      href={`/verse/${occ.surahId}/${occ.verseNumber}`}
+                      className="text-sm text-primary-500 hover:text-primary-600 inline-flex items-center gap-1 transition-colors"
+                    >
+                      Detay ve Çeviriler
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </Link>
                   </div>
                 </>
               )}

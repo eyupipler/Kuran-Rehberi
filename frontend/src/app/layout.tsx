@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import Navbar from '@/components/Navbar';
+import { SettingsProvider } from '@/context/SettingsContext';
 
 const siteUrl = 'https://kuranrehberi.com';
 
@@ -138,22 +139,32 @@ export default function RootLayout({
         <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
       </head>
       <body className="min-h-screen">
-        <Navbar />
+        <SettingsProvider>
+          <Navbar />
 
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-          {children}
-        </main>
+          <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+            {children}
+          </main>
 
-        <footer className="bg-cream-100 dark:bg-gray-900 border-t border-soft-200 dark:border-gray-700 mt-12">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 text-center">
-            <p className="text-soft-600 dark:text-gray-400 font-medium">
-              Kuran Rehberi
-            </p>
-            <p className="text-sm text-soft-500 dark:text-gray-500 mt-1">
-              Açık Kaynak Kuran Araştırma Platformu
-            </p>
-          </div>
-        </footer>
+          <footer className="bg-cream-100 dark:bg-gray-900 border-t border-soft-200 dark:border-gray-700 mt-12">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 text-center">
+              <p className="text-soft-600 dark:text-gray-400 font-medium">
+                Kuran Rehberi
+              </p>
+              <p className="text-sm text-soft-500 dark:text-gray-500 mt-1">
+                Açık Kaynak Kuran Araştırma Platformu
+              </p>
+              <a
+                href="https://github.com/eyupipler/Kuran-Rehberi"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary-500 hover:text-primary-600 text-sm mt-2 inline-block transition-colors"
+              >
+                GitHub'da İncele
+              </a>
+            </div>
+          </footer>
+        </SettingsProvider>
       </body>
     </html>
   );
