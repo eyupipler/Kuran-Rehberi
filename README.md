@@ -4,7 +4,7 @@ Kapsamlı bir Kuran araştırma platformu - kelime kökü analizi, çoklu çevir
 
 ## Özellikler
 
-- 100+ farklı tercüman/çeviri desteği (9 Türkçe, 5 İngilizce meal)
+- 40+ farklı tercüman/çeviri desteği (34 Türkçe, 6 İngilizce meal)
 - Kelime kökü (root word) analizi
 - Morfolojik arama (kelime köküne göre arama)
 - Ayetlerin farklı meallerde karşılaştırması
