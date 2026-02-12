@@ -1,5 +1,5 @@
 // API Base URL
+// .env.local (dev): http://localhost:3001/api
+// .env.production: https://kuran-rehberi.onrender.com/api
 export const API_BASE = process.env.NEXT_PUBLIC_API_BASE
-  || (process.env.NODE_ENV === 'development'
-    ? 'http://localhost:3001/api'
-    : 'https://kuran-rehberi.onrender.com/api');
+  || 'https://kuran-rehberi.onrender.com/api';
