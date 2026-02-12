@@ -4,7 +4,7 @@
  */
 
 // Render.com'daki backend URL'si
-const API_BASE = 'https://kuran-rehberi-api.onrender.com/api';
+const API_BASE = 'https://kuran-rehberi.onrender.com/api';
 
 export interface Surah {
   id: number;
