@@ -5,6 +5,7 @@
 const express = require('express');
 const cors = require('cors');
 const compression = require('compression');
+const path = require('path');
 const { initDatabase } = require('./db/database');
 
 const app = express();
@@ -50,6 +51,28 @@ initDatabase().then(() => {
     console.error(err.stack);
     res.status(500).json({ error: 'Bir hata oluştu', message: err.message });
   });
+
+  // Production'da frontend statik dosyalarını serve et
+  const frontendOut = path.join(__dirname, '..', '..', 'frontend', 'out');
+  const fs = require('fs');
+  if (fs.existsSync(frontendOut)) {
+    console.log('Frontend statik dosyaları serve ediliyor:', frontendOut);
+    app.use(express.static(frontendOut));
+    // SPA fallback - API olmayan tüm istekleri index.html'e yönlendir
+    app.get('*', (req, res) => {
+      // Önce exact path'e bak (trailingSlash: true, dosya .html olabilir)
+      const urlPath = req.path.endsWith('/') ? req.path + 'index.html' : req.path;
+      const filePath = path.join(frontendOut, urlPath);
+      const filePathHtml = path.join(frontendOut, req.path + '.html');
+      if (fs.existsSync(filePath)) {
+        res.sendFile(filePath);
+      } else if (fs.existsSync(filePathHtml)) {
+        res.sendFile(filePathHtml);
+      } else {
+        res.sendFile(path.join(frontendOut, 'index.html'));
+      }
+    });
+  }
 
   app.listen(PORT, '0.0.0.0', () => {
     console.log('Kuran Rehberi API çalışıyor: port ' + PORT);
