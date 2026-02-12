@@ -84,7 +84,7 @@ cd scripts
 node download-data.js
 ```
 Bu işlem:
-- 16 farklı çeviriyi indirir (9 Türkçe, 5 İngilizce, 2 Arapça)
+- 42 farklı çeviriyi indirir (34 Türkçe, 6 İngilizce, 2 Arapça)
 - Morfoloji verilerini indirir
 - Sure bilgilerini kaydeder
 
