@@ -2,7 +2,7 @@ services:
   - type: web
     name: kuran-rehberi-api
     runtime: node
-    buildCommand: cd backend && npm install && npm run init-db && npm run import-data
+    buildCommand: cd backend && npm install && npm run init-db && npm run import-data && cd ../frontend && npm install && npm run build
     startCommand: cd backend && npm start
     envVars:
       - key: NODE_ENV
