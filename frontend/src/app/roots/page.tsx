@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
 import { API_BASE } from '@/config';
 
 interface Root {
@@ -131,9 +130,9 @@ export default function RootsPage() {
           {/* Kök Listesi */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {roots.map((root) => (
-              <Link
+              <a
                 key={root.id}
-                href={`/roots/${encodeURIComponent(root.root)}`}
+                href={`/roots/${encodeURIComponent(root.root)}/`}
                 className="p-4 bg-white dark:bg-gray-800 rounded-lg border hover:shadow-md transition-shadow"
               >
                 <div className="flex items-center justify-between mb-2">
@@ -159,7 +158,7 @@ export default function RootsPage() {
                     {root.meaningEn}
                   </p>
                 )}
-              </Link>
+              </a>
             ))}
           </div>
 

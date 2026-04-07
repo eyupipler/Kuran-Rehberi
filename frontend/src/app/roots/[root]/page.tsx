@@ -4,7 +4,7 @@ import allRoots from '@/data/roots.json';
 // Tüm kökleri statik olarak oluştur
 export function generateStaticParams() {
   return allRoots.map((root: string) => ({
-    root: encodeURIComponent(root),
+    root: root,
   }));
 }
 

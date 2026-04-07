@@ -122,7 +122,7 @@ export default function RootDetailClient({ rootParam }: Props) {
     setLoading(true);
     setError(null);
 
-    // URL'den gelen parametreyi decode et
+    // useParams() zaten decode edilmiş değeri verir
     const decodedRoot = decodeURIComponent(rootParam);
 
     fetch(`${API_BASE}/roots/${encodeURIComponent(decodedRoot)}?translator=${selectedTranslator}`)

@@ -96,7 +96,14 @@ input::placeholder {
   input[type="search"],
   select,
   textarea {
-    @apply text-gray-800 bg-white;
+    color: #ffffff !important;
+    background-color: #374151;
+    border-color: #4b5563;
+  }
+
+  select option {
+    background-color: #374151;
+    color: #ffffff;
   }
 }
 

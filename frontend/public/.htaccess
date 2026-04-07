@@ -1,0 +1,63 @@
+RewriteEngine On
+RewriteBase /
+
+# HTTPS yonlendirmesi
+RewriteCond %{HTTPS} off
+RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+# www yonlendirmesi (www'suz versiyona)
+RewriteCond %{HTTP_HOST} ^www\.(.+)$ [NC]
+RewriteRule ^(.*)$ https://%1/$1 [R=301,L]
+
+# 1) Mevcut dosya varsa dogrudan serve et (js, css, txt, png vs.)
+RewriteCond %{REQUEST_FILENAME} -f
+RewriteRule ^ - [L]
+
+# 2) Klasor varsa ve icinde index.html varsa onu serve et
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteCond %{REQUEST_FILENAME}/index.html -f
+RewriteRule ^(.*?)/?$ $1/index.html [L]
+
+# 3) Dosya uzantisi olan istekler (txt, js, css vs.) - dosya yoksa 404 donmeli
+#    Next.js client-side navigation index.txt fetch eder, bulunamazsa 404 donmeli
+#    SPA fallback'e dusmemeli, yoksa HTML donup parse hatasi verir
+RewriteCond %{REQUEST_URI} \.(txt|js|css|json|png|jpg|jpeg|gif|svg|ico|woff|woff2|map)$ [NC]
+RewriteRule ^ - [R=404,L]
+
+# 4) trailingSlash: true - slash yoksa ekle (sadece uzantisiz path'ler icin)
+RewriteCond %{REQUEST_URI} !(.*)/$
+RewriteRule ^(.*)$ %{REQUEST_URI}/ [L,R=301]
+
+# 5) SPA fallback - hicbir kural eslesmezse ana sayfayi dondur
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^ /index.html [L]
+
+# Dogru MIME tipleri
+<IfModule mod_mime.c>
+  AddType application/javascript .js
+  AddType text/css .css
+  AddType application/json .json
+  AddType image/svg+xml .svg
+  AddType application/font-woff2 .woff2
+  AddType application/font-woff .woff
+  AddType text/plain .txt
+</IfModule>
+
+# Cache ayarlari
+<IfModule mod_expires.c>
+  ExpiresActive On
+  ExpiresByType text/html "access plus 0 seconds"
+  ExpiresByType text/plain "access plus 0 seconds"
+  ExpiresByType text/css "access plus 1 year"
+  ExpiresByType application/javascript "access plus 1 year"
+  ExpiresByType image/png "access plus 1 year"
+  ExpiresByType image/jpeg "access plus 1 year"
+  ExpiresByType image/svg+xml "access plus 1 year"
+  ExpiresByType application/font-woff2 "access plus 1 year"
+</IfModule>
+
+# Gzip sikistirma
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/css application/javascript application/json image/svg+xml text/plain
+</IfModule>

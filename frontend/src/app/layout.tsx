@@ -1,7 +1,10 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import Navbar from '@/components/Navbar';
+import SurahSidebar from '@/components/SurahSidebar';
+import FavoritesPanel from '@/components/FavoritesPanel';
 import { SettingsProvider } from '@/context/SettingsContext';
+import { FavoritesProvider } from '@/context/FavoritesContext';
 
 const siteUrl = 'https://kuranrehberi.com';
 
@@ -68,8 +71,8 @@ export const metadata: Metadata = {
   },
   manifest: '/manifest.json',
   icons: {
-    icon: '/favicon.ico',
-    shortcut: '/favicon-16x16.png',
+    icon: '/logo.png',
+    shortcut: '/logo.png',
     apple: '/apple-touch-icon.png',
   },
   category: 'religion',
@@ -134,19 +137,25 @@ export default function RootLayout({
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="format-detection" content="telephone=no" />
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+        <link rel="icon" type="image/png" href="/logo.png" />
+        <link rel="apple-touch-icon" href="/logo.png" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
       </head>
       <body className="min-h-screen">
         <SettingsProvider>
+          <FavoritesProvider>
           <Navbar />
 
-          <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
-            {children}
-          </main>
+          <div className="flex">
+            <SurahSidebar />
+            <main className="flex-1 min-w-0 px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+              {children}
+            </main>
+          </div>
 
-          <footer className="bg-cream-100 dark:bg-gray-900 border-t border-soft-200 dark:border-gray-700 mt-12">
+          <footer className="bg-cream-100 dark:bg-gray-900 border-t border-soft-200 dark:border-gray-700">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 text-center">
               <p className="text-soft-600 dark:text-gray-400 font-medium">
                 Kuran Rehberi
@@ -164,6 +173,8 @@ export default function RootLayout({
               </a>
             </div>
           </footer>
+          <FavoritesPanel />
+          </FavoritesProvider>
         </SettingsProvider>
       </body>
     </html>
