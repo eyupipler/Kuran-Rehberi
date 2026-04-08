@@ -17,7 +17,7 @@ interface Surah {
 export default function Home() {
   const [surahs, setSurahs] = useState<Surah[]>([]);
   const [loading, setLoading] = useState(true);
-  const [sortBy, setSortBy] = useState<'number' | 'revelation'>('number');
+  const [sortBy, setSortBy] = useState<'number' | 'revelation' | 'alpha-asc' | 'alpha-desc'>('number');
 
   useEffect(() => {
     fetch(`${API_BASE}/surahs`)
@@ -26,8 +26,12 @@ export default function Home() {
       .catch((err) => { console.error('Sureler yüklenemedi:', err); setLoading(false); });
   }, []);
 
-  const filteredSurahs = surahs
-    .sort((a, b) => sortBy === 'revelation' ? a.revelationOrder - b.revelationOrder : a.id - b.id);
+  const filteredSurahs = [...surahs].sort((a, b) => {
+    if (sortBy === 'revelation') return a.revelationOrder - b.revelationOrder;
+    if (sortBy === 'alpha-asc') return a.name.localeCompare(b.name, 'tr');
+    if (sortBy === 'alpha-desc') return b.name.localeCompare(a.name, 'tr');
+    return a.id - b.id;
+  });
 
   if (loading) {
     return (
@@ -53,11 +57,13 @@ export default function Home() {
       <div className="flex flex-wrap items-center gap-2 mb-5">
         <select
           value={sortBy}
-          onChange={(e) => setSortBy(e.target.value as 'number' | 'revelation')}
+          onChange={(e) => setSortBy(e.target.value as 'number' | 'revelation' | 'alpha-asc' | 'alpha-desc')}
           className="border border-soft-200 rounded-lg px-3 py-1.5 text-sm bg-white dark:bg-gray-700 text-soft-700 dark:text-white focus:ring-2 focus:ring-primary-200 focus:border-primary-400 transition-all"
         >
           <option value="number">Kitap Sırası</option>
           <option value="revelation">İniş Sırası</option>
+          <option value="alpha-asc">A → Z (Alfabetik)</option>
+          <option value="alpha-desc">Z → A (Ters Alfabetik)</option>
         </select>
       </div>
 

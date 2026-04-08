@@ -5,6 +5,7 @@ import SurahSidebar from '@/components/SurahSidebar';
 import FavoritesPanel from '@/components/FavoritesPanel';
 import { SettingsProvider } from '@/context/SettingsContext';
 import { FavoritesProvider } from '@/context/FavoritesContext';
+import { NotesProvider } from '@/context/NotesContext';
 
 const siteUrl = 'https://kuranrehberi.com';
 
@@ -145,6 +146,7 @@ export default function RootLayout({
       </head>
       <body className="min-h-screen">
         <SettingsProvider>
+          <NotesProvider>
           <FavoritesProvider>
           <Navbar />
 
@@ -175,6 +177,7 @@ export default function RootLayout({
           </footer>
           <FavoritesPanel />
           </FavoritesProvider>
+          </NotesProvider>
         </SettingsProvider>
       </body>
     </html>

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { API_BASE } from '@/config';
 import { transliterate, transliterateRoot } from '@/utils/transliteration';
+import { useSettings } from '@/context/SettingsContext';
 
 
 interface RootInfo {
@@ -42,46 +43,57 @@ interface Distribution {
   count: number;
 }
 
-// Kelime türünü Türkçe'ye çevir
-const getPartOfSpeechTr = (pos: string) => {
-  const posMap: { [key: string]: string } = {
-    'N': 'İsim',
+// Kelime türünü teknik Türkçe karşılığıyla çevir
+const getPartOfSpeechTr = (pos: string): string => {
+  const posMap: Record<string, string> = {
+    // Temel türler
+    'N': 'İsim (Nom.)',
     'PN': 'Özel İsim',
     'V': 'Fiil',
     'ADJ': 'Sıfat',
     'ADV': 'Zarf',
-    'P': 'Edat',
-    'PREP': 'Edat',
-    'CONJ': 'Bağlaç',
     'PRON': 'Zamir',
-    'DET': 'Belirteç',
+    'DET': 'Tamlayıcı',
+    'CONJ': 'Bağlaç',
     'INTJ': 'Ünlem',
-    'REL': 'İlgi Zamiri',
-    'NEG': 'Olumsuzluk',
-    'EMPH': 'Vurgu',
-    'PART': 'Edat',
-    'ACC': 'Belirtme',
-    'COND': 'Şart',
-    'ANS': 'Cevap',
-    'RES': 'Sonuç',
-    'SUP': 'Dua',
+    // Edatlar
+    'P': 'Harf-i Cer',
+    'PREP': 'Harf-i Cer',
+    'PART': 'Harf',
+    // Özel gramer kategorileri
+    'REL': 'İsm-i Mevsul',
+    'NEG': 'Nefi Harfi',
+    'EMPH': 'Tekid',
+    'ACC': 'Harf-i Nasb',
+    'COND': 'Şart Edatı',
+    'ANS': 'Cevap Harfi',
+    'RES': 'Atıf',
+    'SUP': 'Nida / Temenni',
     'PRO': 'Zamir',
-    'INL': 'Başlangıç',
-    'SUB': 'Alt',
-    'EXP': 'Açıklama',
-    'SUR': 'Şaşırma',
-    'EXH': 'Teşvik',
-    'INC': 'Başlangıç',
-    'INT': 'Soru',
-    'VOC': 'Seslenme',
-    'PREV': 'Önleme',
-    'CIRC': 'Durum',
-    'COM': 'Birliktelik',
-    'EQ': 'Eşitlik',
-    'REM': 'Hatırlatma',
-    'RSLT': 'Sonuç',
-    'RETRACT': 'Geri Çekme',
-    'AMD': 'Düzeltme',
+    'INL': 'Harf-i İbtida',
+    'SUB': 'Harf-i Mastar',
+    'EXP': 'Tefsir Harfi',
+    'SUR': 'Taaccüb',
+    'EXH': 'Tahziz',
+    'INC': 'İbtida Harfi',
+    'INT': 'İstifham (Soru)',
+    'VOC': 'Nida (Seslenme)',
+    'PREV': 'Keff Harfi',
+    'CIRC': 'Hâl',
+    'COM': 'Maiyyet',
+    'EQ': 'Müsavat',
+    'REM': 'Tenbih',
+    'RSLT': 'Netice',
+    'RETRACT': 'İstidrak',
+    'AMD': 'Istinaf',
+    'AVR': 'Tahzir',
+    'CERT': 'Tekit',
+    'EXL': 'Ünlem',
+    'FUT': 'İstikbal (Gelecek)',
+    'IMPV': 'Emir Kipi',
+    'LOC': 'Zarf-ı Mekân',
+    'T': 'Zarf-ı Zaman',
+    'REM2': 'İstidrak',
   };
   return posMap[pos] || pos;
 };
@@ -90,23 +102,83 @@ interface Props {
   rootParam: string;
 }
 
+// Arapça metninde belirtilen pozisyondaki kelimeyi vurgula
+function ArabicWithHighlight({ text, targetWord, wordPosition }: { text: string; targetWord: string; wordPosition: number }) {
+  const words = text.split(/\s+/);
+  return (
+    <span dir="rtl">
+      {words.map((w, i) => {
+        const isTarget = (i + 1 === wordPosition) || w === targetWord;
+        return (
+          <span key={i}>
+            {i > 0 && ' '}
+            {isTarget ? (
+              <mark className="bg-primary-200 dark:bg-primary-800/50 text-primary-800 dark:text-primary-100 rounded px-0.5 not-italic font-arabic">
+                {w}
+              </mark>
+            ) : w}
+          </span>
+        );
+      })}
+    </span>
+  );
+}
+
+// Türkçe meal metninde çeviriyi bulup vurgula
+function MealWithHighlight({ meal, translationTr }: { meal: string; translationTr: string | null }) {
+  if (!meal || !translationTr) return <>{meal}</>;
+
+  const terms = translationTr
+    .split(/[,،\/]+/)
+    .map(t => t.trim().toLowerCase())
+    .filter(t => t.length > 2);
+
+  for (const term of terms) {
+    try {
+      // Türkçe morfoloji için kök eşleşmesi (ilk 4 karakter yeterli)
+      const stem = term.length > 4 ? term.slice(0, 4) : term;
+      const escaped = stem.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const regex = new RegExp(`(${escaped}\\S*)`, 'gi');
+      if (regex.test(meal)) {
+        const parts = meal.split(new RegExp(`(${escaped}\\S*)`, 'gi'));
+        if (parts.length > 1) {
+          return (
+            <>
+              {parts.map((part, i) =>
+                i % 2 === 1 ? (
+                  <mark key={i} className="bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300 rounded px-0.5 not-italic font-medium">
+                    {part}
+                  </mark>
+                ) : part
+              )}
+            </>
+          );
+        }
+      }
+    } catch { continue; }
+  }
+
+  return <>{meal}</>;
+}
+
 export default function RootDetailClient({ rootParam }: Props) {
+  const { settings, updateOnlyMeal, updateTranslator } = useSettings();
+
   const [rootInfo, setRootInfo] = useState<RootInfo | null>(null);
   const [occurrences, setOccurrences] = useState<Occurrence[]>([]);
   const [derivedForms, setDerivedForms] = useState<DerivedForm[]>([]);
   const [distribution, setDistribution] = useState<Distribution[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'occurrences' | 'forms' | 'distribution'>(
-    'occurrences'
-  );
+  const [activeTab, setActiveTab] = useState<'occurrences' | 'forms' | 'distribution'>('occurrences');
   const [showAll, setShowAll] = useState(false);
-  const [onlyMeal, setOnlyMeal] = useState(false);
 
+  // Settings'den oku
+  const onlyMeal = settings.onlyMeal;
 
   // State for translators
   const [translators, setTranslators] = useState<{ code: string; name: string }[]>([]);
-  const [selectedTranslator, setSelectedTranslator] = useState<string>('tr.diyanet');
+  const [selectedTranslator, setSelectedTranslator] = useState<string>(settings.defaultTranslator);
 
   useEffect(() => {
     // Fetch available translators
@@ -292,23 +364,24 @@ export default function RootDetailClient({ rootParam }: Props) {
             Sure Dağılımı
           </button>
           {activeTab === 'occurrences' && (
-            <label className="flex items-center gap-2 cursor-pointer select-none ml-auto pl-4">
-              <input
-                type="checkbox"
-                checked={onlyMeal}
-                onChange={(e) => setOnlyMeal(e.target.checked)}
-                className="w-4 h-4 rounded border-soft-300 text-primary-500 focus:ring-primary-200 transition-all"
-              />
-              <span className="text-sm text-soft-600 dark:text-gray-300 whitespace-nowrap">Sadece meal</span>
-            </label>
+            <button
+              onClick={() => updateOnlyMeal(!onlyMeal)}
+              className={`ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-sm font-medium transition-all whitespace-nowrap ${
+                onlyMeal
+                  ? 'bg-primary-500 border-primary-500 text-white'
+                  : 'border-soft-200 dark:border-gray-600 text-soft-600 dark:text-gray-300 hover:border-primary-300 hover:text-primary-600'
+              }`}
+            >
+              Sadece meal
+            </button>
           )}
 
-          {/* Tercüman Seçimi Dropdown */}
-          <div className="ml-4 border-l border-soft-200 dark:border-gray-700 pl-4 hidden sm:block">
+          {/* Tercüman Seçimi */}
+          <div className={`${activeTab === 'occurrences' ? 'ml-2' : 'ml-auto'} border-l border-soft-200 dark:border-gray-700 pl-3 hidden sm:block`}>
             <select
               value={selectedTranslator}
-              onChange={(e) => setSelectedTranslator(e.target.value)}
-              className="text-sm border-none bg-transparent text-soft-600 dark:text-gray-300 focus:ring-0 cursor-pointer pr-8"
+              onChange={(e) => { setSelectedTranslator(e.target.value); updateTranslator(e.target.value); }}
+              className="text-sm border border-soft-200 dark:border-gray-600 rounded-lg px-2 py-1 bg-white dark:bg-gray-700 text-soft-600 dark:text-gray-300 focus:ring-1 focus:ring-primary-200 focus:outline-none"
             >
               {translators.map(t => (
                 <option key={t.code} value={t.code}>{t.name}</option>
@@ -337,7 +410,9 @@ export default function RootDetailClient({ rootParam }: Props) {
                       {occ.surahName} {occ.verseNumber}
                     </span>
                     <p className="text-sm text-soft-600 dark:text-gray-300 leading-relaxed flex-1">
-                      {occ.verseMealTr || '-'}
+                      {occ.verseMealTr
+                        ? <MealWithHighlight meal={occ.verseMealTr} translationTr={occ.translationTr} />
+                        : '-'}
                     </p>
                   </div>
                 </Link>
@@ -373,21 +448,25 @@ export default function RootDetailClient({ rootParam }: Props) {
 
                     {/* İçerik: Sol (Meal) - Sağ (Arapça) */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {/* Sol: Türkçe Meal */}
+                      {/* Sol: Türkçe Meal (çevrilen kelime vurgulanmış) */}
                       <div className="text-left font-serif">
                         {occ.verseMealTr ? (
                           <p className="text-soft-700 dark:text-gray-300 leading-relaxed text-base">
-                            {occ.verseMealTr}
+                            <MealWithHighlight meal={occ.verseMealTr} translationTr={occ.translationTr} />
                           </p>
                         ) : (
                           <p className="text-soft-400 italic text-sm">Meal bulunamadı.</p>
                         )}
                       </div>
 
-                      {/* Sağ: Arapça Metin */}
+                      {/* Sağ: Arapça Metin (kök kelimesi vurgulanmış) */}
                       <div className="text-right">
-                        <p className="text-xl sm:text-2xl font-arabic arabic-text text-soft-800 dark:text-gray-200 leading-loose" dir="rtl">
-                          {occ.arabicText}
+                        <p className="text-xl sm:text-2xl font-arabic arabic-text text-soft-800 dark:text-gray-200 leading-loose">
+                          <ArabicWithHighlight
+                            text={occ.arabicText}
+                            targetWord={occ.word}
+                            wordPosition={occ.wordPosition}
+                          />
                         </p>
                         <p className="text-xs text-soft-400 mt-1 font-latin">
                           {transliterate(occ.arabicText)}

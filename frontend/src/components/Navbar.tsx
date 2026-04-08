@@ -16,7 +16,7 @@ export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [translators, setTranslators] = useState<Translator[]>([]);
-  const { settings, updateTranslator, updateLanguage } = useSettings();
+  const { settings, updateTranslator, updateLanguage, updateOnlyMeal } = useSettings();
   const { favorites, setPanelOpen, panelOpen } = useFavorites();
 
   useEffect(() => {
@@ -54,6 +54,9 @@ export default function Navbar() {
             </a>
             <a href="/roots" className="text-soft-600 hover:text-primary-600 hover:bg-primary-50 px-4 py-2 rounded-lg transition-all duration-200 font-medium">
               Kelime Kökleri
+            </a>
+            <a href="/notes" className="text-soft-600 hover:text-primary-600 hover:bg-primary-50 px-4 py-2 rounded-lg transition-all duration-200 font-medium">
+              Notlarım
             </a>
 
             {/* Favoriler butonu */}
@@ -169,6 +172,24 @@ export default function Navbar() {
                 </select>
               </div>
             </div>
+            <div className="mt-3 flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-soft-600 dark:text-gray-300">Sadece Meal Modu</p>
+                <p className="text-xs text-soft-400 dark:text-gray-500">Sure sayfalarında Arapça metni gizler</p>
+              </div>
+              <button
+                onClick={() => updateOnlyMeal(!settings.onlyMeal)}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
+                  settings.onlyMeal ? 'bg-primary-500' : 'bg-soft-200 dark:bg-gray-600'
+                }`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                    settings.onlyMeal ? 'translate-x-6' : 'translate-x-1'
+                  }`}
+                />
+              </button>
+            </div>
             <p className="text-xs text-soft-400 mt-2">Ayarlarınız cihazınıza yerel olarak kaydedilir.</p>
           </div>
         )}
@@ -185,6 +206,9 @@ export default function Navbar() {
               </a>
               <a href="/roots" className="text-soft-600 hover:text-primary-600 hover:bg-primary-50 px-4 py-3 rounded-lg transition-all duration-200 font-medium" onClick={() => setMobileMenuOpen(false)}>
                 Kelime Kökleri
+              </a>
+              <a href="/notes" className="text-soft-600 hover:text-primary-600 hover:bg-primary-50 px-4 py-3 rounded-lg transition-all duration-200 font-medium" onClick={() => setMobileMenuOpen(false)}>
+                Notlarım
               </a>
             </div>
           </div>

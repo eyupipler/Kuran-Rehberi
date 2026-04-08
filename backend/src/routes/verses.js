@@ -1,6 +1,18 @@
 const express = require('express');
 const router = express.Router();
 const { getDatabase } = require('../db/database');
+const fs = require('fs');
+const path = require('path');
+
+// İlgili ayetler (statik JSON, bir kez yükle)
+let relatedVersesData = null;
+function getRelatedVerses() {
+  if (!relatedVersesData) {
+    const p = path.join(__dirname, '..', '..', '..', 'data', 'related-verses.json');
+    try { relatedVersesData = JSON.parse(fs.readFileSync(p, 'utf8')); } catch { relatedVersesData = {}; }
+  }
+  return relatedVersesData;
+}
 
 router.get('/:surahId/:verseNumber', (req, res) => {
   try {
@@ -32,7 +44,21 @@ router.get('/:surahId/:verseNumber', (req, res) => {
       WHERE w.verse_id = ? ORDER BY w.word_position
     `).all(verse.id);
 
-    res.json({ verse, translations, words });
+    // İlgili ayetler (anlam bütünlüğü)
+    const key = `${surahId}:${verseNumber}`;
+    const relatedKeys = getRelatedVerses()[key] || [];
+    const relatedVerses = relatedKeys.map((k) => {
+      const [sId, vNum] = k.split(':').map(Number);
+      const rv = db.prepare(`
+        SELECT v.surah_id as surahId, v.verse_number as verseNumber,
+          v.arabic_text as arabicText, s.name as surahName
+        FROM verses v JOIN surahs s ON s.id = v.surah_id
+        WHERE v.surah_id = ? AND v.verse_number = ?
+      `).get(sId, vNum);
+      return rv || null;
+    }).filter(Boolean);
+
+    res.json({ verse, translations, words, relatedVerses });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

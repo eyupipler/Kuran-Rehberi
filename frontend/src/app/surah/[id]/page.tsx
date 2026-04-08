@@ -32,7 +32,7 @@ interface Translator {
 export default function SurahPage() {
   const params = useParams();
   const surahId = params.id as string;
-  const { settings, updateTranslator } = useSettings();
+  const { settings, updateTranslator, updateOnlyMeal } = useSettings();
   const { addFavorite, removeFavorite, isFavorite } = useFavorites();
 
   const [surah, setSurah] = useState<Surah | null>(null);
@@ -40,7 +40,7 @@ export default function SurahPage() {
   const [translators, setTranslators] = useState<Translator[]>([]);
   const [selectedTranslator, setSelectedTranslator] = useState(settings.defaultTranslator);
   const [loading, setLoading] = useState(true);
-  const [onlyMeal, setOnlyMeal] = useState(false);
+  const onlyMeal = settings.onlyMeal;
 
   useEffect(() => {
     setSelectedTranslator(settings.defaultTranslator);
@@ -131,15 +131,16 @@ export default function SurahPage() {
             ))}
           </optgroup>
         </select>
-        <label className="flex items-center gap-2 cursor-pointer select-none">
-          <input
-            type="checkbox"
-            checked={onlyMeal}
-            onChange={(e) => setOnlyMeal(e.target.checked)}
-            className="w-4 h-4 rounded border-soft-300 text-primary-500 focus:ring-primary-200 transition-all"
-          />
-          <span className="text-sm text-soft-600 dark:text-gray-300">Sadece meal</span>
-        </label>
+        <button
+          onClick={() => updateOnlyMeal(!onlyMeal)}
+          className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm font-medium transition-all ${
+            onlyMeal
+              ? 'bg-primary-500 border-primary-500 text-white'
+              : 'border-soft-200 dark:border-gray-600 text-soft-600 dark:text-gray-300 hover:border-primary-300 hover:text-primary-600'
+          }`}
+        >
+          Sadece meal
+        </button>
       </div>
 
       {/* Ayetler */}

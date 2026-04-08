@@ -5,23 +5,27 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 interface Settings {
   defaultTranslator: string;
   defaultLanguage: string;
+  onlyMeal: boolean;
 }
 
 interface SettingsContextType {
   settings: Settings;
   updateTranslator: (translator: string) => void;
   updateLanguage: (language: string) => void;
+  updateOnlyMeal: (value: boolean) => void;
 }
 
 const defaultSettings: Settings = {
   defaultTranslator: 'tr.diyanet',
   defaultLanguage: 'tr',
+  onlyMeal: false,
 };
 
 const SettingsContext = createContext<SettingsContextType>({
   settings: defaultSettings,
   updateTranslator: () => {},
   updateLanguage: () => {},
+  updateOnlyMeal: () => {},
 });
 
 export function SettingsProvider({ children }: { children: ReactNode }) {
@@ -53,8 +57,12 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     setSettings((prev) => ({ ...prev, defaultLanguage: language }));
   };
 
+  const updateOnlyMeal = (value: boolean) => {
+    setSettings((prev) => ({ ...prev, onlyMeal: value }));
+  };
+
   return (
-    <SettingsContext.Provider value={{ settings, updateTranslator, updateLanguage }}>
+    <SettingsContext.Provider value={{ settings, updateTranslator, updateLanguage, updateOnlyMeal }}>
       {children}
     </SettingsContext.Provider>
   );

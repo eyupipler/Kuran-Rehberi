@@ -1,12 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { API_BASE } from '@/config';
 import { transliterate, transliterateRoot } from '@/utils/transliteration';
 import { useSettings } from '@/context/SettingsContext';
 import { useFavorites } from '@/context/FavoritesContext';
+import { useNotes } from '@/context/NotesContext';
 
 interface VerseData {
   id: number;
@@ -35,6 +36,13 @@ interface Word {
   rootMeaningTr: string | null;
 }
 
+interface RelatedVerse {
+  surahId: number;
+  verseNumber: number;
+  arabicText: string;
+  surahName: string;
+}
+
 interface CompareData {
   verse: VerseData;
   translations: Translation[];
@@ -51,6 +59,15 @@ interface CompareVerseItem {
   verseNumber: number;
   arabicText: string;
   translation?: string;
+}
+
+interface RootOccurrence {
+  surahId: number;
+  verseNumber: number;
+  surahName: string;
+  arabicText: string;
+  verseMealTr: string | null;
+  word: string;
 }
 
 const getPartOfSpeechTr = (pos: string) => {
@@ -141,12 +158,21 @@ export default function VersePage() {
   const verseNumber = params.verseNumber as string;
   const { settings } = useSettings();
   const { addFavorite, removeFavorite, isFavorite } = useFavorites();
+  const { getNote, saveNote, deleteNote } = useNotes();
+  const [noteOpen, setNoteOpen] = useState(false);
+  const [noteContent, setNoteContent] = useState('');
 
   const [verse, setVerse] = useState<VerseData | null>(null);
   const [translations, setTranslations] = useState<Translation[]>([]);
   const [words, setWords] = useState<Word[]>([]);
+  const [relatedVerses, setRelatedVerses] = useState<RelatedVerse[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedWord, setSelectedWord] = useState<Word | null>(null);
+  const [rootOccurrences, setRootOccurrences] = useState<RootOccurrence[]>([]);
+  const [rootOccLoading, setRootOccLoading] = useState(false);
+  const [hoveredRoot, setHoveredRoot] = useState<string | null>(null);
+  const [hoverRootOccs, setHoverRootOccs] = useState<RootOccurrence[]>([]);
+  const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [languageFilter, setLanguageFilter] = useState<string>(settings.defaultLanguage);
 
   // Karşılaştırma
@@ -168,6 +194,7 @@ export default function VersePage() {
         setVerse(data.verse);
         setTranslations(data.translations);
         setWords(data.words);
+        setRelatedVerses(data.relatedVerses || []);
         setLoading(false);
       })
       .catch((err) => {
@@ -190,7 +217,7 @@ export default function VersePage() {
     setCompareSelectedSurah(surah);
     setCompareVersesLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/surahs/${surah.id}/verses?translator=diyanet`);
+      const res = await fetch(`${API_BASE}/surahs/${surah.id}/verses?translator=tr.diyanet`);
       const data = await res.json();
       setCompareVerses(data.verses.map((v: { verseNumber: number; arabicText: string; translation?: string }) => ({
         verseNumber: v.verseNumber,
@@ -216,6 +243,48 @@ export default function VersePage() {
     }
     setCompareLoading(false);
   };
+
+  // Seçili kelime kökü değişince diğer ayetleri getir
+  useEffect(() => {
+    if (!selectedWord?.root) { setRootOccurrences([]); return; }
+    setRootOccLoading(true);
+    fetch(`${API_BASE}/roots/${encodeURIComponent(selectedWord.root)}?translator=tr.diyanet`)
+      .then((res) => res.json())
+      .then((data) => setRootOccurrences(data.occurrences || []))
+      .catch(() => setRootOccurrences([]))
+      .finally(() => setRootOccLoading(false));
+  }, [selectedWord?.root]);
+
+  // Hover: kelime kökü üzerine gelinince karşılaştırma aracında vurgula
+  const handleWordHover = (root: string | null) => {
+    setHoveredRoot(root);
+    if (!root) { setHoverRootOccs([]); return; }
+    if (root === selectedWord?.root) { setHoverRootOccs(rootOccurrences); return; }
+    if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
+    hoverTimerRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`${API_BASE}/roots/${encodeURIComponent(root)}?translator=tr.diyanet`);
+        const data = await res.json();
+        setHoverRootOccs(data.occurrences || []);
+      } catch { setHoverRootOccs([]); }
+    }, 250);
+  };
+
+  // Hover öncelikli, yoksa tıklanan kelime kökü kalıcı olarak aktif
+  const activeRoot = hoveredRoot ?? selectedWord?.root ?? null;
+  const activeOccs = activeRoot === selectedWord?.root ? rootOccurrences : hoverRootOccs;
+
+  const rootSurahCounts = useMemo(() => {
+    if (!activeRoot || activeOccs.length === 0) return {} as Record<number, number>;
+    const c: Record<number, number> = {};
+    for (const o of activeOccs) c[o.surahId] = (c[o.surahId] || 0) + 1;
+    return c;
+  }, [activeRoot, activeOccs]);
+
+  const rootVerseSet = useMemo(() => {
+    if (!activeRoot || activeOccs.length === 0) return new Set<string>();
+    return new Set(activeOccs.map(o => `${o.surahId}:${o.verseNumber}`));
+  }, [activeRoot, activeOccs]);
 
   const resetCompare = () => {
     setCompareData(null);
@@ -247,6 +316,23 @@ export default function VersePage() {
     }
   };
 
+  const existingNote = verse ? getNote(verse.surahId, verse.verseNumber) : undefined;
+
+  const openNote = () => {
+    setNoteContent(existingNote?.content || '');
+    setNoteOpen(true);
+  };
+
+  const handleSaveNote = () => {
+    if (!verse) return;
+    if (noteContent.trim()) {
+      saveNote({ surahId: verse.surahId, verseNumber: verse.verseNumber, surahName: verse.surahName, arabicText: verse.arabicText, content: noteContent.trim() });
+    } else if (existingNote) {
+      deleteNote(existingNote.id);
+    }
+    setNoteOpen(false);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
@@ -263,15 +349,45 @@ export default function VersePage() {
     <div>
       {/* ── Başlık ── */}
       <div className="mb-6 sm:mb-8">
-        <Link
-          href={`/surah/${surahId}`}
-          className="text-primary-500 hover:text-primary-600 text-sm mb-4 inline-flex items-center gap-1 transition-colors"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-          {verse.surahName} Suresine Dön
-        </Link>
+        {/* Üst navigasyon satırı */}
+        <div className="flex items-center justify-between mb-4">
+          <Link
+            href={`/surah/${surahId}`}
+            className="text-primary-500 hover:text-primary-600 text-sm inline-flex items-center gap-1 transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+            <span className="hidden sm:inline">{verse.surahName} Suresine Dön</span>
+            <span className="sm:hidden">Sureye Dön</span>
+          </Link>
+
+          {/* Önceki / Sonraki Ayet */}
+          <div className="flex items-center gap-2">
+            {parseInt(verseNumber) > 1 ? (
+              <Link
+                href={`/verse/${surahId}/${parseInt(verseNumber) - 1}`}
+                className="inline-flex items-center gap-1 px-3 py-1.5 bg-primary-500 hover:bg-primary-600 text-white rounded-lg text-sm font-medium transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+                <span className="hidden sm:inline">Önceki Ayet</span>
+                <span className="sm:hidden">Önceki</span>
+              </Link>
+            ) : <div />}
+            <Link
+              href={`/verse/${surahId}/${parseInt(verseNumber) + 1}`}
+              className="inline-flex items-center gap-1 px-3 py-1.5 bg-primary-500 hover:bg-primary-600 text-white rounded-lg text-sm font-medium transition-colors"
+            >
+              <span className="hidden sm:inline">Sonraki Ayet</span>
+              <span className="sm:hidden">Sonraki</span>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </Link>
+          </div>
+        </div>
 
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
@@ -299,6 +415,22 @@ export default function VersePage() {
               <span className="hidden sm:inline">{favorited ? 'Favoride' : 'Favorile'}</span>
             </button>
 
+            {/* Not Al */}
+            <button
+              onClick={openNote}
+              title={existingNote ? 'Notumu Gör / Düzenle' : 'Not Al'}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border transition-all text-sm font-medium ${
+                existingNote
+                  ? 'bg-amber-50 dark:bg-amber-900/30 border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-400'
+                  : 'border-soft-200 dark:border-gray-600 text-soft-500 dark:text-gray-400 hover:border-amber-300 hover:text-amber-600'
+              }`}
+            >
+              <svg className="w-4 h-4" fill={existingNote ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+              <span className="hidden sm:inline">{existingNote ? 'Notum Var' : 'Not Al'}</span>
+            </button>
+
             {/* Karşılaştır */}
             <button
               onClick={() => { if (compareMode) { setCompareMode(false); resetCompare(); } else { setCompareMode(true); } }}
@@ -317,14 +449,68 @@ export default function VersePage() {
         </div>
       </div>
 
+      {/* ── İlgili Ayetler (Anlam Bütünlüğü) ── */}
+      {relatedVerses.length > 0 && (
+        <div className="mb-5 flex flex-wrap gap-2 items-center">
+          <span className="text-xs font-semibold text-soft-400 dark:text-gray-500 uppercase tracking-wide">İlgili Ayetler:</span>
+          {relatedVerses.map((rv) => (
+            <button
+              key={`${rv.surahId}:${rv.verseNumber}`}
+              onClick={() => {
+                setCompareMode(true);
+                setCompareData({ verse: { id: 0, surahId: rv.surahId, verseNumber: rv.verseNumber, arabicText: rv.arabicText, surahName: rv.surahName, surahArabicName: '' }, translations: [], words: [] });
+                fetch(`${API_BASE}/verses/${rv.surahId}/${rv.verseNumber}`)
+                  .then(r => r.json())
+                  .then(d => setCompareData({ verse: d.verse, translations: d.translations, words: d.words }));
+              }}
+              className="inline-flex items-center gap-1 px-2.5 py-1 bg-soft-50 dark:bg-gray-700 border border-soft-200 dark:border-gray-600 rounded-lg text-xs text-soft-600 dark:text-gray-300 hover:bg-primary-50 hover:border-primary-200 hover:text-primary-600 dark:hover:bg-primary-900/20 dark:hover:text-primary-400 transition-colors"
+            >
+              <span className="font-medium text-primary-500">{rv.surahId}:{rv.verseNumber}</span>
+              <span>{rv.surahName}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* ── Arapça Metin ── */}
       <div className="p-5 sm:p-8 bg-white dark:bg-gray-800 rounded-xl border border-soft-200 dark:border-gray-700 mb-6 sm:mb-8 shadow-soft">
-        <p className="text-2xl sm:text-3xl font-arabic leading-loose text-soft-800 dark:text-white arabic-text">
-          {verse.arabicText}
+        <p className="text-2xl sm:text-3xl font-arabic leading-loose text-soft-800 dark:text-white arabic-text text-right">
+          {words.length > 0
+            ? [...words].sort((a, b) => a.position - b.position).map((w) => (
+                <span
+                  key={w.position}
+                  className={`inline-block mx-0.5 px-1 rounded-md transition-all duration-150 ${
+                    w.root
+                      ? activeRoot === w.root
+                        ? 'text-primary-600 dark:text-primary-400 bg-primary-100 dark:bg-primary-900/40 cursor-pointer ring-1 ring-primary-400'
+                        : 'hover:text-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/20 cursor-pointer'
+                      : ''
+                  }`}
+                  onMouseEnter={() => w.root && handleWordHover(w.root)}
+                  onMouseLeave={() => handleWordHover(null)}
+                  onClick={() => {
+                    if (!w.root) return;
+                    handleWordHover(w.root);
+                    setSelectedWord(selectedWord?.position === w.position ? null : w);
+                  }}
+                  title={w.root ? `Kök: ${w.root}` : undefined}
+                >
+                  {w.arabicWord}
+                </span>
+              ))
+            : verse.arabicText
+          }
         </p>
-        <p className="text-sm text-soft-400 text-right mt-1">
-          {transliterate(verse.arabicText)}
-        </p>
+        {activeRoot && (
+          <p className="text-xs text-primary-500 dark:text-primary-400 text-right mt-1 font-medium">
+            Kök: {activeRoot}{selectedWord && !hoveredRoot ? ' — tıklandı, karşılaştırma listesinde işaretli' : ' — karşılaştırma listesinde işaretlendi'}
+          </p>
+        )}
+        {!activeRoot && (
+          <p className="text-sm text-soft-400 text-right mt-1">
+            {transliterate(verse.arabicText)}
+          </p>
+        )}
       </div>
 
       {/* ── Karşılaştırma Paneli ── */}
@@ -395,25 +581,38 @@ export default function VersePage() {
                     </div>
                   ) : (
                     <div className="overflow-y-auto flex-1 rounded-xl border border-soft-200 dark:border-gray-700" style={{ maxHeight: '52vh', scrollbarWidth: 'thin' }}>
-                      {compareVerses.map((v) => (
-                        <button
-                          key={v.verseNumber}
-                          onClick={() => selectCompareVerse(v.verseNumber)}
-                          className="w-full text-left px-3 py-2.5 border-b border-soft-100 dark:border-gray-700 last:border-b-0 hover:bg-primary-50 dark:hover:bg-gray-700 transition-colors flex items-start gap-2.5"
-                        >
-                          <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300 text-xs font-medium flex items-center justify-center mt-0.5">
-                            {v.verseNumber}
-                          </span>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs font-arabic text-soft-600 dark:text-gray-300 text-right leading-relaxed line-clamp-2">
-                              {v.arabicText}
-                            </p>
-                            {v.translation && (
-                              <p className="text-xs text-soft-400 dark:text-gray-500 mt-0.5 line-clamp-1">{v.translation}</p>
+                      {compareVerses.map((v) => {
+                        const hasRoot = !!(activeRoot && rootVerseSet.has(`${compareSelectedSurah.id}:${v.verseNumber}`));
+                        return (
+                          <button
+                            key={v.verseNumber}
+                            onClick={() => selectCompareVerse(v.verseNumber)}
+                            className={`w-full text-left px-3 py-2.5 border-b border-soft-100 dark:border-gray-700 last:border-b-0 transition-colors flex items-start gap-2.5 ${
+                              hasRoot
+                                ? 'bg-primary-50 dark:bg-primary-900/20 border-l-2 border-l-primary-500 hover:bg-primary-100 dark:hover:bg-primary-900/30'
+                                : 'hover:bg-primary-50 dark:hover:bg-gray-700'
+                            }`}
+                          >
+                            <span className={`flex-shrink-0 w-6 h-6 rounded-full text-xs font-medium flex items-center justify-center mt-0.5 ${
+                              hasRoot
+                                ? 'bg-primary-500 text-white'
+                                : 'bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300'
+                            }`}>
+                              {v.verseNumber}
+                            </span>
+                            <div className="flex-1 min-w-0">
+                              {v.translation ? (
+                                <p className="text-xs text-soft-700 dark:text-gray-200 leading-relaxed line-clamp-2">{v.translation}</p>
+                              ) : (
+                                <p className="text-xs font-arabic text-soft-600 dark:text-gray-300 text-right leading-relaxed line-clamp-2">{v.arabicText}</p>
+                              )}
+                            </div>
+                            {hasRoot && (
+                              <span className="flex-shrink-0 text-[10px] text-primary-500 font-bold mt-1">●</span>
                             )}
-                          </div>
-                        </button>
-                      ))}
+                          </button>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -441,11 +640,21 @@ export default function VersePage() {
                         <button
                           key={s.id}
                           onClick={() => selectCompareSurah(s)}
-                          className="w-full text-left px-3 py-2 border-b border-soft-100 dark:border-gray-700 last:border-b-0 hover:bg-primary-50 dark:hover:bg-gray-700 transition-colors flex items-center gap-2.5"
+                          className={`w-full text-left px-3 py-2 border-b border-soft-100 dark:border-gray-700 last:border-b-0 transition-colors flex items-center gap-2.5 ${
+                            activeRoot && rootSurahCounts[s.id]
+                              ? 'bg-primary-50 dark:bg-primary-900/20 hover:bg-primary-100 dark:hover:bg-primary-900/30'
+                              : 'hover:bg-primary-50 dark:hover:bg-gray-700'
+                          }`}
                         >
                           <span className="flex-shrink-0 text-xs text-soft-400 dark:text-gray-500 w-6 text-right">{s.id}</span>
                           <span className="flex-1 text-sm font-medium text-soft-700 dark:text-gray-200">{s.name} Suresi</span>
-                          <span className="text-xs text-soft-400 dark:text-gray-500 flex-shrink-0">{s.totalVerses} ayet</span>
+                          {activeRoot && rootSurahCounts[s.id] ? (
+                            <span className="flex-shrink-0 text-[11px] bg-primary-500 text-white px-1.5 py-0.5 rounded-full font-bold">
+                              {rootSurahCounts[s.id]}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-soft-400 dark:text-gray-500 flex-shrink-0">{s.totalVerses} ayet</span>
+                          )}
                         </button>
                       ))
                     }
@@ -454,6 +663,33 @@ export default function VersePage() {
               )}
             </div>
           </div>
+
+          {/* Ortak Kökler (her iki ayet yüklenince) */}
+          {compareData && words.length > 0 && compareData.words.length > 0 && (() => {
+            const currentRoots = new Set(words.filter(w => w.root).map(w => w.root));
+            const sharedRoots = compareData.words.filter(w => w.root && currentRoots.has(w.root));
+            const uniqueShared = [...new Set(sharedRoots.map(w => w.root))];
+            if (uniqueShared.length === 0) return null;
+            return (
+              <div className="px-5 pb-5 border-t border-primary-200 dark:border-primary-700 pt-4">
+                <p className="text-xs font-semibold text-primary-700 dark:text-primary-300 uppercase tracking-wide mb-2">
+                  Ortak Kökler ({uniqueShared.length})
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {uniqueShared.map(root => (
+                    <a
+                      key={root}
+                      href={`/roots/${encodeURIComponent(root)}/`}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary-50 dark:bg-primary-900/30 border border-primary-200 dark:border-primary-700 rounded-lg hover:bg-primary-100 transition-colors"
+                    >
+                      <span className="font-arabic text-base text-primary-700 dark:text-primary-300">{root}</span>
+                      <span className="text-xs text-primary-500">↗</span>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
         </div>
       )}
 
@@ -620,6 +856,55 @@ export default function VersePage() {
                       </div>
                     )}
                   </div>
+
+                  {/* Bu kökün geçtiği diğer ayetler */}
+                  {selectedWord.root && (
+                    <div className="mt-4 border-t border-primary-200 dark:border-primary-800 pt-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <h5 className="text-xs font-semibold text-primary-700 dark:text-primary-300 uppercase tracking-wide">
+                          "{selectedWord.root}" kökünün geçtiği ayetler
+                        </h5>
+                        {!rootOccLoading && rootOccurrences.length > 0 && (
+                          <span className="text-xs text-soft-400">{rootOccurrences.length} ayet</span>
+                        )}
+                      </div>
+                      {rootOccLoading ? (
+                        <div className="flex justify-center py-3">
+                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary-500"></div>
+                        </div>
+                      ) : (
+                        <div className="space-y-1.5 max-h-48 overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
+                          {rootOccurrences.map((occ, i) => {
+                            const isCurrent = occ.surahId === verse.surahId && occ.verseNumber === verse.verseNumber;
+                            return (
+                              <Link
+                                key={i}
+                                href={`/verse/${occ.surahId}/${occ.verseNumber}`}
+                                className={`flex items-start gap-2 p-2 rounded-lg text-xs transition-colors ${
+                                  isCurrent
+                                    ? 'bg-primary-100 dark:bg-primary-900/40 border border-primary-300 dark:border-primary-700'
+                                    : 'hover:bg-white dark:hover:bg-gray-700 bg-primary-50/50 dark:bg-gray-700/30'
+                                }`}
+                              >
+                                <span className="flex-shrink-0 font-medium text-primary-600 dark:text-primary-400 w-16 leading-relaxed">
+                                  {occ.surahId}:{occ.verseNumber}
+                                </span>
+                                <div className="flex-1 min-w-0">
+                                  <span className="font-arabic text-soft-700 dark:text-gray-200 mr-1">{occ.word}</span>
+                                  {occ.verseMealTr && (
+                                    <p className="text-soft-500 dark:text-gray-400 line-clamp-1 mt-0.5">{occ.verseMealTr}</p>
+                                  )}
+                                </div>
+                                {isCurrent && (
+                                  <span className="text-[10px] bg-primary-500 text-white px-1.5 py-0.5 rounded flex-shrink-0">Mevcut</span>
+                                )}
+                              </Link>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </>
@@ -627,32 +912,60 @@ export default function VersePage() {
         </div>
       </div>
 
-      {/* ── Navigasyon ── */}
-      <div className="flex justify-between mt-6 sm:mt-8 pt-6 border-t border-soft-200 dark:border-gray-700">
-        {parseInt(verseNumber) > 1 && (
-          <Link
-            href={`/verse/${surahId}/${parseInt(verseNumber) - 1}`}
-            className="inline-flex items-center gap-1 px-3 sm:px-4 py-2 border border-soft-200 rounded-xl hover:bg-primary-50 hover:border-primary-200 dark:hover:bg-gray-700 text-soft-600 hover:text-primary-600 transition-all duration-200 text-sm sm:text-base"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-            <span className="hidden sm:inline">Önceki Ayet</span>
-            <span className="sm:hidden">Önceki</span>
-          </Link>
-        )}
-        <div className="flex-1" />
-        <Link
-          href={`/verse/${surahId}/${parseInt(verseNumber) + 1}`}
-          className="inline-flex items-center gap-1 px-3 sm:px-4 py-2 border border-soft-200 rounded-xl hover:bg-primary-50 hover:border-primary-200 dark:hover:bg-gray-700 text-soft-600 hover:text-primary-600 transition-all duration-200 text-sm sm:text-base"
-        >
-          <span className="hidden sm:inline">Sonraki Ayet</span>
-          <span className="sm:hidden">Sonraki</span>
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-          </svg>
-        </Link>
-      </div>
+      {/* ── Not Modalı ── */}
+      {noteOpen && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setNoteOpen(false)} />
+          <div className="relative bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-lg border border-soft-200 dark:border-gray-700 z-10">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-soft-200 dark:border-gray-700">
+              <div>
+                <h3 className="font-semibold text-soft-800 dark:text-white">Not Al</h3>
+                <p className="text-xs text-soft-400 mt-0.5">{verse?.surahName} {verseNumber}. Ayet</p>
+              </div>
+              <div className="flex items-center gap-2">
+                {existingNote && (
+                  <Link
+                    href={`/notes#${verse?.surahId}-${verseNumber}`}
+                    className="text-xs text-amber-600 hover:text-amber-700 transition-colors"
+                    onClick={() => setNoteOpen(false)}
+                  >
+                    Notlar sayfasına git →
+                  </Link>
+                )}
+                <button onClick={() => setNoteOpen(false)} className="p-1 rounded text-soft-400 hover:text-soft-600 transition-colors">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div className="p-5">
+              <textarea
+                value={noteContent}
+                onChange={(e) => setNoteContent(e.target.value)}
+                rows={6}
+                autoFocus
+                placeholder="Notunuzu buraya yazın..."
+                className="w-full border border-soft-200 dark:border-gray-600 rounded-xl px-4 py-3 text-sm bg-white dark:bg-gray-700 text-soft-700 dark:text-white focus:ring-2 focus:ring-amber-200 focus:border-amber-400 focus:outline-none resize-none"
+              />
+              <div className="flex gap-2 mt-3">
+                <button
+                  onClick={handleSaveNote}
+                  className="flex-1 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-sm font-medium transition-colors"
+                >
+                  {noteContent.trim() ? 'Kaydet' : 'Notu Sil'}
+                </button>
+                <button
+                  onClick={() => setNoteOpen(false)}
+                  className="px-4 py-2 border border-soft-200 dark:border-gray-600 text-soft-600 dark:text-gray-300 rounded-xl text-sm font-medium hover:bg-soft-50 dark:hover:bg-gray-700 transition-colors"
+                >
+                  İptal
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
