@@ -31,35 +31,42 @@ function extractLatinConsonants(query) {
   return query.toLowerCase().replace(/[-.\s]/g, '').replace(/[aeiouıöü]/g, '');
 }
 
-// Root için anlam türet: word-level translation_tr'den en sık geçen anlamları birleştir
-function deriveRootMeaning(db, rootId) {
-  const rows = db.prepare(`
-    SELECT translation_tr, COUNT(*) as cnt
-    FROM words
-    WHERE root_id = ? AND translation_tr IS NOT NULL AND translation_tr != ''
-    GROUP BY translation_tr
-    ORDER BY cnt DESC
-    LIMIT 5
-  `).all(rootId);
-
-  if (!rows.length) return null;
-
-  // Benzersiz anlamları al, virgülle birleştir
-  const meanings = rows.map(r => r.translation_tr.trim()).filter(Boolean);
-  // Tekrarları kaldır (büyük/küçük harf duyarsız)
-  const seen = new Set();
-  const unique = [];
-  for (const m of meanings) {
-    const key = m.toLowerCase();
-    if (!seen.has(key)) { seen.add(key); unique.push(m); }
-  }
-  return unique.slice(0, 4).join(', ');
-}
-
+// Birden fazla kök için tek sorguda anlam türet
 function enrichRoots(db, roots) {
+  const missing = roots.filter(r => !r.meaningTr);
+  if (!missing.length) return roots;
+
+  const ids = missing.map(r => r.id);
+  const placeholders = ids.map(() => '?').join(',');
+
+  // Tek sorguda tüm eksik kökler için word-level translation_tr'den anlam al
+  const rows = db.prepare(`
+    SELECT root_id, translation_tr, COUNT(*) as cnt
+    FROM words
+    WHERE root_id IN (${placeholders})
+      AND translation_tr IS NOT NULL AND translation_tr != ''
+    GROUP BY root_id, translation_tr
+    ORDER BY root_id, cnt DESC
+  `).all(...ids);
+
+  // root_id → anlamlar listesi
+  const byRoot = new Map();
+  for (const row of rows) {
+    if (!byRoot.has(row.root_id)) byRoot.set(row.root_id, []);
+    byRoot.get(row.root_id).push(row.translation_tr.trim());
+  }
+
   return roots.map(r => {
     if (!r.meaningTr) {
-      r.meaningTr = deriveRootMeaning(db, r.id) || null;
+      const meanings = byRoot.get(r.id) || [];
+      const seen = new Set();
+      const unique = [];
+      for (const m of meanings) {
+        const key = m.toLowerCase();
+        if (!seen.has(key) && m.length > 0) { seen.add(key); unique.push(m); }
+        if (unique.length >= 4) break;
+      }
+      r.meaningTr = unique.length ? unique.join(', ') : null;
       r.meaningDerived = true;
     }
     return r;
@@ -179,7 +186,8 @@ router.get('/:root', (req, res) => {
 
     // Anlam türet (eksikse)
     if (!rootInfo.meaningTr) {
-      rootInfo.meaningTr = deriveRootMeaning(db, rootInfo.id);
+      const [enriched] = enrichRoots(db, [rootInfo]);
+      rootInfo.meaningTr = enriched.meaningTr;
     }
 
     const occurrences = db.prepare(`

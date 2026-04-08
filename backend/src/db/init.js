@@ -1,15 +1,15 @@
 /**
- * Veritabani Baslangic Scripti (sql.js)
+ * Veritabani Baslangic Scripti (better-sqlite3)
  */
 
-const initSqlJs = require('sql.js');
+const Database = require('better-sqlite3');
 const fs = require('fs');
 const path = require('path');
 
 const DB_PATH = path.join(__dirname, '..', '..', 'kuran.db');
 const SCHEMA_PATH = path.join(__dirname, 'schema.sql');
 
-async function initDatabase() {
+function initDatabase() {
   console.log('Veritabani olusturuluyor...');
   console.log('Konum:', DB_PATH);
 
@@ -19,27 +19,17 @@ async function initDatabase() {
     console.log('Mevcut veritabani silindi.');
   }
 
-  // sql.js yukle
-  const SQL = await initSqlJs();
-  const db = new SQL.Database();
+  const db = new Database(DB_PATH);
+  db.pragma('journal_mode = WAL');
+  db.pragma('foreign_keys = ON');
 
   // Semayi oku ve uygula
-  let schema = fs.readFileSync(SCHEMA_PATH, 'utf-8');
-  
-  // FTS5 ve trigger'lari kaldir (sql.js desteklemiyor)
-  schema = schema.replace(/CREATE VIRTUAL TABLE.*?;/gs, '');
-  schema = schema.replace(/CREATE TRIGGER.*?END;/gs, '');
-  
-  db.run(schema);
+  const schema = fs.readFileSync(SCHEMA_PATH, 'utf-8');
+  db.exec(schema);
   console.log('Sema basariyla uygulandi.');
-
-  // Kaydet
-  const data = db.export();
-  const buffer = Buffer.from(data);
-  fs.writeFileSync(DB_PATH, buffer);
 
   db.close();
   console.log('Veritabani hazir!');
 }
 
-initDatabase().catch(console.error);
+initDatabase();

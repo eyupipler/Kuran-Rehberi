@@ -3,47 +3,40 @@
  * Çalıştır: node backend/src/db/apply-dictionary.js
  */
 
-const initSqlJs = require('sql.js');
-const fs = require('fs');
+const Database = require('better-sqlite3');
 const path = require('path');
 const ROOT_MEANINGS = require('./root-dictionary');
 
 const DB_PATH = path.join(__dirname, '..', '..', 'kuran.db');
 
-async function run() {
+function run() {
   console.log('Veritabanı yükleniyor...');
-  const SQL = await initSqlJs();
-  const buffer = fs.readFileSync(DB_PATH);
-  const db = new SQL.Database(buffer);
+  const db = new Database(DB_PATH);
 
-  const before = db.exec(`SELECT COUNT(*) FROM roots WHERE meaning_tr IS NULL OR meaning_tr = ''`);
-  console.log('Anlamı eksik (önce):', before[0].values[0][0]);
+  const beforeRow = db.prepare(`SELECT COUNT(*) as n FROM roots WHERE meaning_tr IS NULL OR meaning_tr = ''`).get();
+  console.log('Anlamı eksik (önce):', beforeRow.n);
 
-  db.run('BEGIN TRANSACTION');
+  const getMeaning = db.prepare(`SELECT meaning_tr FROM roots WHERE root = ?`);
+  const updateMeaning = db.prepare(`UPDATE roots SET meaning_tr = ? WHERE root = ?`);
+
   let updated = 0;
+  const process = db.transaction(() => {
+    for (const [root, meaning] of Object.entries(ROOT_MEANINGS)) {
+      const existing = getMeaning.get(root);
+      if (!existing) continue;
+      if (existing.meaning_tr && existing.meaning_tr.trim()) continue;
+      updateMeaning.run(meaning, root);
+      updated++;
+    }
+  });
 
-  for (const [root, meaning] of Object.entries(ROOT_MEANINGS)) {
-    const existing = db.exec(`SELECT meaning_tr FROM roots WHERE root = '${root.replace(/'/g, "''")}'`);
-    if (!existing[0]) continue; // Bu kök veritabanında yok
+  process();
 
-    const currentMeaning = existing[0].values[0]?.[0];
-    if (currentMeaning && currentMeaning.trim()) continue; // Zaten var
-
-    const escaped = meaning.replace(/'/g, "''");
-    db.run(`UPDATE roots SET meaning_tr = '${escaped}' WHERE root = '${root.replace(/'/g, "''")}'`);
-    updated++;
-  }
-
-  db.run('COMMIT');
-
-  const after = db.exec(`SELECT COUNT(*) FROM roots WHERE meaning_tr IS NULL OR meaning_tr = ''`);
+  const afterRow = db.prepare(`SELECT COUNT(*) as n FROM roots WHERE meaning_tr IS NULL OR meaning_tr = ''`).get();
   console.log(`Güncellendi: ${updated}`);
-  console.log('Anlamı eksik (sonra):', after[0].values[0][0]);
-
-  const data = db.export();
-  fs.writeFileSync(DB_PATH, Buffer.from(data));
+  console.log('Anlamı eksik (sonra):', afterRow.n);
   db.close();
   console.log('Kaydedildi:', DB_PATH);
 }
 
-run().catch(console.error);
+run();

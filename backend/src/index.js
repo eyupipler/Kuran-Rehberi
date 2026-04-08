@@ -15,6 +15,12 @@ app.use(cors());
 app.use(compression());
 app.use(express.json());
 
+// Kamera, mikrofon ve diğer hassas API erişimlerini devre dışı bırak
+app.use((req, res, next) => {
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), notifications=()');
+  next();
+});
+
 // Veritabanını başlat ve sonra route'ları yükle
 initDatabase().then(() => {
   console.log('Veritabanı yüklendi.');

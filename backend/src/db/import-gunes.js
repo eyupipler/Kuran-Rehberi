@@ -3,7 +3,7 @@
  * Çalıştır: node backend/src/db/import-gunes.js
  */
 
-const initSqlJs = require('sql.js');
+const Database = require('better-sqlite3');
 const fs = require('fs');
 const path = require('path');
 
@@ -30,56 +30,46 @@ async function fetchFresh() {
     process.stdout.write(` ${verses.length} ayet\n`);
     await sleep(150);
   }
-  // Kaydet
   fs.writeFileSync(GUNES_PATH, JSON.stringify(translations, null, 2), 'utf8');
   console.log(`Kaydedildi: ${translations.length} ayet`);
   return translations;
 }
 
-async function importToDB(translations) {
+function importToDB(translations) {
   console.log('\nVeritabanına ekleniyor...');
-  const SQL = await initSqlJs();
-  const buffer = fs.readFileSync(DB_PATH);
-  const db = new SQL.Database(buffer);
+  const db = new Database(DB_PATH);
 
-  // Tercümanı ekle/güncelle
-  db.run(`INSERT OR REPLACE INTO translators (code, name, language) VALUES ('tr.gunes', 'Şinasi Güneş', 'tr')`);
-
-  const trResult = db.exec(`SELECT id FROM translators WHERE code = 'tr.gunes'`);
-  const trId = trResult[0].values[0][0];
+  db.prepare(`INSERT OR REPLACE INTO translators (code, name, language) VALUES ('tr.gunes', 'Şinasi Güneş', 'tr')`).run();
+  const trRow = db.prepare(`SELECT id FROM translators WHERE code = 'tr.gunes'`).get();
+  const trId = trRow.id;
   console.log('Tercüman ID:', trId);
 
-  // Mevcut tr.gunes çevirilerini temizle
-  db.run(`DELETE FROM translations WHERE translator_id = ${trId}`);
+  db.prepare(`DELETE FROM translations WHERE translator_id = ?`).run(trId);
   console.log('Eski çeviriler temizlendi.');
 
-  db.run('BEGIN TRANSACTION');
   let count = 0, notFound = 0;
+  const insertTrans = db.prepare('INSERT INTO translations (verse_id, translator_id, text) VALUES (?,?,?)');
+  const getVerse = db.prepare('SELECT id FROM verses WHERE surah_id = ? AND verse_number = ?');
 
-  for (const t of translations) {
-    const vResult = db.exec(`SELECT id FROM verses WHERE surah_id = ${t.surahId} AND verse_number = ${t.verseNumber}`);
-    if (!vResult.length || !vResult[0].values.length) { notFound++; continue; }
-    const vId = vResult[0].values[0][0];
-    const escaped = t.text.replace(/'/g, "''");
-    db.run(`INSERT INTO translations (verse_id, translator_id, text) VALUES (${vId}, ${trId}, '${escaped}')`);
-    count++;
-  }
+  const insertBatch = db.transaction((rows) => {
+    for (const t of rows) {
+      const vRow = getVerse.get(t.surahId, t.verseNumber);
+      if (!vRow) { notFound++; continue; }
+      insertTrans.run(vRow.id, trId, t.text);
+      count++;
+    }
+  });
 
-  db.run('COMMIT');
+  insertBatch(translations);
+  db.close();
   console.log(`Eklendi: ${count} çeviri`);
   if (notFound > 0) console.log(`Bulunamayan ayet: ${notFound}`);
-
-  // Kaydet
-  const data = db.export();
-  fs.writeFileSync(DB_PATH, Buffer.from(data));
-  db.close();
   console.log('Veritabanı kaydedildi.');
 }
 
 async function main() {
   let translations;
 
-  // Mevcut dosya varsa kullan, yoksa yeniden çek
   if (fs.existsSync(GUNES_PATH)) {
     const existing = JSON.parse(fs.readFileSync(GUNES_PATH, 'utf8'));
     if (existing.length > 6000) {
@@ -93,7 +83,7 @@ async function main() {
     translations = await fetchFresh();
   }
 
-  await importToDB(translations);
+  importToDB(translations);
   console.log('\nTamamlandı!');
 }
 

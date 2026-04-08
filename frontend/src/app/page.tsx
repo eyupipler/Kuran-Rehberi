@@ -17,13 +17,14 @@ interface Surah {
 export default function Home() {
   const [surahs, setSurahs] = useState<Surah[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [sortBy, setSortBy] = useState<'number' | 'revelation' | 'alpha-asc' | 'alpha-desc'>('number');
 
   useEffect(() => {
     fetch(`${API_BASE}/surahs`)
-      .then((res) => res.json())
+      .then((res) => { if (!res.ok) throw new Error('API hatası'); return res.json(); })
       .then((data) => { setSurahs(data); setLoading(false); })
-      .catch((err) => { console.error('Sureler yüklenemedi:', err); setLoading(false); });
+      .catch((err) => { console.error('Sureler yüklenemedi:', err); setError(true); setLoading(false); });
   }, []);
 
   const filteredSurahs = [...surahs].sort((a, b) => {
@@ -37,6 +38,24 @@ export default function Home() {
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[50vh] gap-4 text-center px-4">
+        <div className="text-4xl">⚠️</div>
+        <h2 className="text-lg font-semibold text-soft-700 dark:text-gray-300">Sunucuya bağlanılamadı</h2>
+        <p className="text-sm text-soft-500 dark:text-gray-400 max-w-sm">
+          Site ilk açılışta biraz geç yanıt verebilir. Lütfen sayfayı yenileyin.
+        </p>
+        <button
+          onClick={() => { setError(false); setLoading(true); fetch(`${API_BASE}/surahs`).then(r => r.json()).then(d => { setSurahs(d); setLoading(false); }).catch(() => { setError(true); setLoading(false); }); }}
+          className="px-4 py-2 bg-primary-600 text-white rounded-lg text-sm hover:bg-primary-700 transition-colors"
+        >
+          Tekrar Dene
+        </button>
       </div>
     );
   }

@@ -3,91 +3,77 @@
  * Çalıştır: node backend/src/db/populate-root-meanings.js
  */
 
-const initSqlJs = require('sql.js');
-const fs = require('fs');
+const Database = require('better-sqlite3');
 const path = require('path');
 
 const DB_PATH = path.join(__dirname, '..', '..', 'kuran.db');
 
-async function run() {
+function run() {
   console.log('Veritabanı yükleniyor...');
-  const SQL = await initSqlJs();
-  const buffer = fs.readFileSync(DB_PATH);
-  const db = new SQL.Database(buffer);
+  const db = new Database(DB_PATH);
 
-  // Kaç kökte anlam eksik?
-  const before = db.exec(`SELECT COUNT(*) as n FROM roots WHERE meaning_tr IS NULL OR meaning_tr = ''`);
-  console.log('Anlamı eksik kök sayısı (önce):', before[0].values[0][0]);
+  const beforeRow = db.prepare(`SELECT COUNT(*) as n FROM roots WHERE meaning_tr IS NULL OR meaning_tr = ''`).get();
+  console.log('Anlamı eksik kök sayısı (önce):', beforeRow.n);
 
-  // Tüm kökleri al
-  const roots = db.exec(`SELECT id FROM roots`);
-  const rootIds = roots[0].values.map(r => r[0]);
+  const rootIds = db.prepare(`SELECT id FROM roots`).all().map(r => r.id);
   console.log('Toplam kök:', rootIds.length);
 
   let updated = 0;
   let skipped = 0;
 
-  db.run('BEGIN TRANSACTION');
+  const getMeaning = db.prepare(`SELECT meaning_tr FROM roots WHERE id = ?`);
+  const getWordMeanings = db.prepare(`
+    SELECT translation_tr, COUNT(*) as cnt
+    FROM words
+    WHERE root_id = ?
+      AND translation_tr IS NOT NULL
+      AND translation_tr != ''
+      AND length(translation_tr) > 1
+    GROUP BY translation_tr
+    ORDER BY cnt DESC
+    LIMIT 6
+  `);
+  const updateMeaning = db.prepare(`UPDATE roots SET meaning_tr = ? WHERE id = ?`);
 
-  for (const rootId of rootIds) {
-    // Mevcut anlamı kontrol et
-    const existing = db.exec(`SELECT meaning_tr FROM roots WHERE id = ${rootId}`);
-    const currentMeaning = existing[0]?.values[0]?.[0];
-    if (currentMeaning && currentMeaning.trim()) {
-      skipped++;
-      continue; // Zaten anlamı var
-    }
-
-    // Word-level translation_tr'den en sık geçen anlamları al
-    const wordMeanings = db.exec(`
-      SELECT translation_tr, COUNT(*) as cnt
-      FROM words
-      WHERE root_id = ${rootId}
-        AND translation_tr IS NOT NULL
-        AND translation_tr != ''
-        AND length(translation_tr) > 1
-      GROUP BY translation_tr
-      ORDER BY cnt DESC
-      LIMIT 6
-    `);
-
-    if (!wordMeanings[0] || wordMeanings[0].values.length === 0) continue;
-
-    // Benzersiz anlamları birleştir
-    const seen = new Set();
-    const meanings = [];
-    for (const [meaning] of wordMeanings[0].values) {
-      if (!meaning) continue;
-      const cleaned = meaning.trim();
-      const key = cleaned.toLowerCase();
-      if (!seen.has(key) && cleaned.length > 0) {
-        seen.add(key);
-        meanings.push(cleaned);
+  const process = db.transaction(() => {
+    for (const rootId of rootIds) {
+      const existing = getMeaning.get(rootId);
+      if (existing && existing.meaning_tr && existing.meaning_tr.trim()) {
+        skipped++;
+        continue;
       }
-      if (meanings.length >= 4) break;
+
+      const wordMeanings = getWordMeanings.all(rootId);
+      if (!wordMeanings.length) continue;
+
+      const seen = new Set();
+      const meanings = [];
+      for (const row of wordMeanings) {
+        if (!row.translation_tr) continue;
+        const cleaned = row.translation_tr.trim();
+        const key = cleaned.toLowerCase();
+        if (!seen.has(key) && cleaned.length > 0) {
+          seen.add(key);
+          meanings.push(cleaned);
+        }
+        if (meanings.length >= 4) break;
+      }
+
+      if (!meanings.length) continue;
+      updateMeaning.run(meanings.join(', '), rootId);
+      updated++;
     }
+  });
 
-    if (meanings.length === 0) continue;
+  process();
 
-    const combined = meanings.join(', ');
-    // SQL injection'a karşı escape
-    const escaped = combined.replace(/'/g, "''");
-    db.run(`UPDATE roots SET meaning_tr = '${escaped}' WHERE id = ${rootId}`);
-    updated++;
-  }
-
-  db.run('COMMIT');
-
-  const after = db.exec(`SELECT COUNT(*) as n FROM roots WHERE meaning_tr IS NULL OR meaning_tr = ''`);
+  const afterRow = db.prepare(`SELECT COUNT(*) as n FROM roots WHERE meaning_tr IS NULL OR meaning_tr = ''`).get();
   console.log(`Güncellenen kök: ${updated}`);
   console.log(`Atlandı (zaten var): ${skipped}`);
-  console.log('Anlamı eksik kalan kök sayısı (sonra):', after[0].values[0][0]);
+  console.log('Anlamı eksik kalan kök sayısı (sonra):', afterRow.n);
 
-  // Kaydet
-  const data = db.export();
-  fs.writeFileSync(DB_PATH, Buffer.from(data));
   db.close();
-  console.log('Veritabanı kaydedildi:', DB_PATH);
+  console.log('Tamamlandı:', DB_PATH);
 }
 
-run().catch(console.error);
+run();
