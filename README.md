@@ -191,7 +191,6 @@ Kök arama `?q=` parametresi şu formatları destekler:
 ## Notlar ve Kısıtlamalar
 
 - Kullanıcı ayarları, favoriler ve notlar **tarayıcının localStorage**'ında saklanır — site güncellemelerinden etkilenmez, tarayıcı verisi silinirse sıfırlanır.
-- Backend Render ücretsiz planında barındırılmaktadır; 15 dakika aktivite olmazsa uyku moduna girer. İlk istek ~30 saniye sürebilir.
 - Frontend statik olarak derlenir; API URL'i derleme sırasında `NEXT_PUBLIC_API_BASE` env değişkeninden okunur.
 
 ## Katkıda Bulunma
