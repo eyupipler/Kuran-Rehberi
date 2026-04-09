@@ -42,6 +42,7 @@ const TRANSLATORS = {
   'tr.yildirim_suat': { name: 'Suat Yıldırım', language: 'tr' },
   'tr.tefhim': { name: 'Tefhim-ul Kuran', language: 'tr' },
   'tr.gunes': { name: 'Şinasi Güneş', language: 'tr' },
+  'tr.yilmaz': { name: 'Hakkı Yılmaz', language: 'tr' },
   'en.yusufali': { name: 'Abdullah Yusuf Ali', language: 'en' },
   'en.arberry': { name: 'Arthur John Arberry', language: 'en' },
   'en.haleem': { name: 'Abdel Haleem', language: 'en' },

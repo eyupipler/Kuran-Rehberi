@@ -121,7 +121,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="tr">
+    <html lang="tr" className="dark">
       <head>
         <script
           type="application/ld+json"

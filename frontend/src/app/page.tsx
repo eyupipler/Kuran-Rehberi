@@ -14,11 +14,28 @@ interface Surah {
   revelationOrder: number;
 }
 
+type SortKey = 'name' | 'id' | 'revelation' | 'verses';
+type SortDir = 'asc' | 'desc';
+
+function SortIcon({ active, dir }: { active: boolean; dir: SortDir }) {
+  if (!active) {
+    return (
+      <span className="ml-1 text-soft-300 dark:text-gray-600 text-xs select-none">⇅</span>
+    );
+  }
+  return (
+    <span className="ml-1 text-primary-500 dark:text-primary-400 text-xs select-none">
+      {dir === 'asc' ? '↑' : '↓'}
+    </span>
+  );
+}
+
 export default function Home() {
   const [surahs, setSurahs] = useState<Surah[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
-  const [sortBy, setSortBy] = useState<'number' | 'revelation' | 'alpha-asc' | 'alpha-desc'>('number');
+  const [sortKey, setSortKey] = useState<SortKey>('id');
+  const [sortDir, setSortDir] = useState<SortDir>('asc');
 
   useEffect(() => {
     fetch(`${API_BASE}/surahs`)
@@ -27,11 +44,22 @@ export default function Home() {
       .catch((err) => { console.error('Sureler yüklenemedi:', err); setError(true); setLoading(false); });
   }, []);
 
-  const filteredSurahs = [...surahs].sort((a, b) => {
-    if (sortBy === 'revelation') return a.revelationOrder - b.revelationOrder;
-    if (sortBy === 'alpha-asc') return a.name.localeCompare(b.name, 'tr');
-    if (sortBy === 'alpha-desc') return b.name.localeCompare(a.name, 'tr');
-    return a.id - b.id;
+  function handleSort(key: SortKey) {
+    if (sortKey === key) {
+      setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortKey(key);
+      setSortDir('asc');
+    }
+  }
+
+  const sortedSurahs = [...surahs].sort((a, b) => {
+    let cmp = 0;
+    if (sortKey === 'name') cmp = a.name.localeCompare(b.name, 'tr');
+    else if (sortKey === 'id') cmp = a.id - b.id;
+    else if (sortKey === 'revelation') cmp = a.revelationOrder - b.revelationOrder;
+    else if (sortKey === 'verses') cmp = a.totalVerses - b.totalVerses;
+    return sortDir === 'asc' ? cmp : -cmp;
   });
 
   if (loading) {
@@ -60,10 +88,14 @@ export default function Home() {
     );
   }
 
+  const thBase = 'px-4 py-3 text-xs font-semibold uppercase tracking-wide whitespace-nowrap cursor-pointer select-none transition-colors hover:text-primary-600 dark:hover:text-primary-400';
+  const thActive = 'text-primary-600 dark:text-primary-400';
+  const thInactive = 'text-soft-500 dark:text-gray-400';
+
   return (
     <div>
       {/* Başlık */}
-      <div className="mb-4">
+      <div className="mb-6">
         <h1 className="text-2xl sm:text-3xl font-semibold text-soft-800 dark:text-white mb-1">
           Kuran-ı Kerim
         </h1>
@@ -72,41 +104,43 @@ export default function Home() {
         </p>
       </div>
 
-      {/* Filtreler */}
-      <div className="flex flex-wrap items-center gap-2 mb-5">
-        <select
-          value={sortBy}
-          onChange={(e) => setSortBy(e.target.value as 'number' | 'revelation' | 'alpha-asc' | 'alpha-desc')}
-          className="border border-soft-200 rounded-lg px-3 py-1.5 text-sm bg-white dark:bg-gray-700 text-soft-700 dark:text-white focus:ring-2 focus:ring-primary-200 focus:border-primary-400 transition-all"
-        >
-          <option value="number">Kitap Sırası</option>
-          <option value="revelation">İniş Sırası</option>
-          <option value="alpha-asc">A → Z (Alfabetik)</option>
-          <option value="alpha-desc">Z → A (Ters Alfabetik)</option>
-        </select>
-      </div>
-
       {/* Masaüstü tablo */}
       <div className="hidden sm:block overflow-x-auto rounded-xl border border-soft-200 dark:border-gray-700">
         <table className="w-full border-collapse">
           <thead>
             <tr className="bg-soft-50 dark:bg-gray-800 border-b border-soft-200 dark:border-gray-700">
-              <th className="text-left px-5 py-3 text-xs font-semibold text-soft-500 dark:text-gray-400 uppercase tracking-wide w-full">
+              <th
+                className={`text-left ${thBase} ${sortKey === 'name' ? thActive : thInactive} w-full`}
+                onClick={() => handleSort('name')}
+              >
                 Sure İsmi
+                <SortIcon active={sortKey === 'name'} dir={sortDir} />
               </th>
-              <th className="text-center px-4 py-3 text-xs font-semibold text-soft-500 dark:text-gray-400 uppercase tracking-wide whitespace-nowrap">
+              <th
+                className={`text-center ${thBase} ${sortKey === 'id' ? thActive : thInactive}`}
+                onClick={() => handleSort('id')}
+              >
                 Kitap Sırası
+                <SortIcon active={sortKey === 'id'} dir={sortDir} />
               </th>
-              <th className="text-center px-4 py-3 text-xs font-semibold text-soft-500 dark:text-gray-400 uppercase tracking-wide whitespace-nowrap">
+              <th
+                className={`text-center ${thBase} ${sortKey === 'revelation' ? thActive : thInactive}`}
+                onClick={() => handleSort('revelation')}
+              >
                 İniş Sırası
+                <SortIcon active={sortKey === 'revelation'} dir={sortDir} />
               </th>
-              <th className="text-center px-4 py-3 text-xs font-semibold text-soft-500 dark:text-gray-400 uppercase tracking-wide whitespace-nowrap">
+              <th
+                className={`text-center ${thBase} ${sortKey === 'verses' ? thActive : thInactive}`}
+                onClick={() => handleSort('verses')}
+              >
                 Ayet Sayısı
+                <SortIcon active={sortKey === 'verses'} dir={sortDir} />
               </th>
             </tr>
           </thead>
           <tbody>
-            {filteredSurahs.map((surah, i) => (
+            {sortedSurahs.map((surah, i) => (
               <tr
                 key={surah.id}
                 className={[
@@ -147,7 +181,7 @@ export default function Home() {
 
       {/* Mobil liste */}
       <div className="sm:hidden -mx-4 divide-y divide-soft-100 dark:divide-gray-700 border-t border-soft-100 dark:border-gray-700">
-        {filteredSurahs.map((surah) => (
+        {sortedSurahs.map((surah) => (
           <Link
             key={surah.id}
             href={`/surah/${surah.id}`}
