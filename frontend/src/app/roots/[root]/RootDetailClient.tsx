@@ -124,23 +124,47 @@ function ArabicWithHighlight({ text, targetWord, wordPosition }: { text: string;
   );
 }
 
+// Türkçe ses değişimleri için kök normalize et
+function turkishStem(word: string): string {
+  // Küçük harfe çevir, Türkçe karakterleri normalize et
+  const lower = word.toLowerCase()
+    .replace(/İ/g, 'i').replace(/I/g, 'ı')
+    .replace(/Ğ/g, 'ğ').replace(/Ş/g, 'ş')
+    .replace(/Ç/g, 'ç').replace(/Ö/g, 'ö').replace(/Ü/g, 'ü');
+  // Son ek kaldır (en, er, in, un, ün, ler, lar, de, da, dan, den, a, e, i, ı, u, ü)
+  const suffixes = ['lerin', 'larin', 'lerın', 'lerin', 'lerde', 'lardan', 'lerden',
+    'ların', 'lerin', 'lar', 'ler', 'den', 'dan', 'ten', 'tan', 'de', 'da', 'te', 'ta',
+    'nin', 'nın', 'nun', 'nün', 'in', 'ın', 'un', 'ün', 'yi', 'yı', 'yu', 'yü',
+    'ye', 'ya', 'le', 'la', 'nde', 'nda', 'nden', 'ndan', 'ler', 'lar'];
+  let stem = lower;
+  for (const suf of suffixes) {
+    if (stem.length > suf.length + 2 && stem.endsWith(suf)) {
+      stem = stem.slice(0, stem.length - suf.length);
+      break;
+    }
+  }
+  // İlk 4 karakter yeterli
+  return stem.length > 4 ? stem.slice(0, 4) : stem;
+}
+
 // Türkçe meal metninde çeviriyi bulup vurgula
 function MealWithHighlight({ meal, translationTr }: { meal: string; translationTr: string | null }) {
   if (!meal || !translationTr) return <>{meal}</>;
 
   const terms = translationTr
-    .split(/[,،\/]+/)
-    .map(t => t.trim().toLowerCase())
+    .split(/[,،\/;]+/)
+    .map(t => t.trim())
     .filter(t => t.length > 2);
 
   for (const term of terms) {
     try {
-      // Türkçe morfoloji için kök eşleşmesi (ilk 4 karakter yeterli)
-      const stem = term.length > 4 ? term.slice(0, 4) : term;
+      const stem = turkishStem(term);
+      if (stem.length < 3) continue;
       const escaped = stem.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const regex = new RegExp(`(${escaped}\\S*)`, 'gi');
+      // Match the stem at word boundaries (start of word, followed by any word chars)
+      const regex = new RegExp(`(${escaped}[a-züğışçöâîû]*)`, 'gi');
       if (regex.test(meal)) {
-        const parts = meal.split(new RegExp(`(${escaped}\\S*)`, 'gi'));
+        const parts = meal.split(new RegExp(`(${escaped}[a-züğışçöâîû]*)`, 'gi'));
         if (parts.length > 1) {
           return (
             <>

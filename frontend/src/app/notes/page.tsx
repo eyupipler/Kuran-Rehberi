@@ -1,14 +1,46 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useNotes, NoteItem } from '@/context/NotesContext';
+import { useSettings } from '@/context/SettingsContext';
+import { API_BASE } from '@/config';
 
 export default function NotesPage() {
   const { notes, deleteNote, saveNote } = useNotes();
+  const { settings } = useSettings();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editContent, setEditContent] = useState('');
   const [search, setSearch] = useState('');
+  // Map: "surahId:verseNumber" → translation text
+  const [translations, setTranslations] = useState<Record<string, string>>({});
+
+  // Fetch default translator's translation for all notes
+  useEffect(() => {
+    if (notes.length === 0) return;
+    const toFetch = notes.filter((n) => {
+      const key = `${n.surahId}:${n.verseNumber}`;
+      return !translations[key];
+    });
+    if (toFetch.length === 0) return;
+
+    toFetch.forEach((n) => {
+      const key = `${n.surahId}:${n.verseNumber}`;
+      fetch(`${API_BASE}/verses/${n.surahId}/${n.verseNumber}`)
+        .then((r) => r.json())
+        .then((data) => {
+          const trans: { translatorCode: string; text: string }[] = data.translations || [];
+          const preferred = trans.find((t) => t.translatorCode === settings.defaultTranslator)
+            || trans.find((t) => t.translatorCode === 'tr.diyanet')
+            || trans[0];
+          if (preferred) {
+            setTranslations((prev) => ({ ...prev, [key]: preferred.text }));
+          }
+        })
+        .catch(() => {});
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [notes.length, settings.defaultTranslator]);
 
   const sorted = [...notes]
     .filter((n) =>
@@ -69,94 +101,110 @@ export default function NotesPage() {
         </div>
       ) : (
         <div className="space-y-4">
-          {sorted.map((note) => (
-            <div
-              key={note.id}
-              id={note.id.replace(':', '-')}
-              className="bg-white dark:bg-gray-800 rounded-xl border border-soft-200 dark:border-gray-700 overflow-hidden shadow-soft hover:shadow-soft-md transition-all"
-            >
-              {/* Başlık */}
-              <div className="flex items-center justify-between px-4 py-3 bg-cream-50 dark:bg-gray-800/50 border-b border-soft-100 dark:border-gray-700">
-                <Link
-                  href={`/verse/${note.surahId}/${note.verseNumber}`}
-                  className="flex items-center gap-2 hover:text-primary-600 transition-colors"
-                >
-                  <span className="verse-number text-xs">{note.surahId}:{note.verseNumber}</span>
-                  <span className="text-sm font-medium text-soft-700 dark:text-gray-200">
-                    {note.surahName} Suresi, {note.verseNumber}. Ayet
-                  </span>
-                  <svg className="w-3.5 h-3.5 text-soft-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                  </svg>
-                </Link>
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => startEdit(note)}
-                    className="p-1.5 rounded-lg text-soft-400 hover:text-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors"
-                    title="Düzenle"
+          {sorted.map((note) => {
+            const transKey = `${note.surahId}:${note.verseNumber}`;
+            const translationText = translations[transKey];
+            return (
+              <div
+                key={note.id}
+                id={note.id.replace(':', '-')}
+                className="bg-white dark:bg-gray-800 rounded-xl border border-soft-200 dark:border-gray-700 overflow-hidden shadow-soft hover:shadow-soft-md transition-all"
+              >
+                {/* Başlık */}
+                <div className="flex items-center justify-between px-4 py-3 bg-cream-50 dark:bg-gray-800/50 border-b border-soft-100 dark:border-gray-700">
+                  <Link
+                    href={`/verse/${note.surahId}/${note.verseNumber}`}
+                    className="flex items-center gap-2 hover:text-primary-600 transition-colors"
                   >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    <span className="verse-number text-xs">{note.surahId}:{note.verseNumber}</span>
+                    <span className="text-sm font-medium text-soft-700 dark:text-gray-200">
+                      {note.surahName} Suresi, {note.verseNumber}. Ayet
+                    </span>
+                    <svg className="w-3.5 h-3.5 text-soft-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                     </svg>
-                  </button>
-                  <button
-                    onClick={() => deleteNote(note.id)}
-                    className="p-1.5 rounded-lg text-soft-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                    title="Sil"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                  </button>
-                </div>
-              </div>
-
-              {/* Arapça */}
-              <div className="px-4 pt-3 pb-0">
-                <p className="font-arabic text-lg text-soft-600 dark:text-gray-400 text-right leading-loose line-clamp-2">
-                  {note.arabicText}
-                </p>
-              </div>
-
-              {/* Not içeriği */}
-              <div className="px-4 pb-4 pt-2">
-                {editingId === note.id ? (
-                  <div>
-                    <textarea
-                      value={editContent}
-                      onChange={(e) => setEditContent(e.target.value)}
-                      rows={4}
-                      autoFocus
-                      className="w-full border border-primary-300 dark:border-primary-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-soft-700 dark:text-white focus:ring-2 focus:ring-primary-200 focus:outline-none resize-none"
-                    />
-                    <div className="flex gap-2 mt-2">
-                      <button
-                        onClick={() => saveEdit(note)}
-                        className="px-3 py-1.5 bg-primary-500 hover:bg-primary-600 text-white rounded-lg text-xs font-medium transition-colors"
-                      >
-                        Kaydet
-                      </button>
-                      <button
-                        onClick={() => setEditingId(null)}
-                        className="px-3 py-1.5 border border-soft-200 dark:border-gray-600 text-soft-500 dark:text-gray-400 rounded-lg text-xs font-medium hover:bg-soft-50 dark:hover:bg-gray-700 transition-colors"
-                      >
-                        İptal
-                      </button>
-                    </div>
+                  </Link>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => startEdit(note)}
+                      className="p-1.5 rounded-lg text-soft-400 hover:text-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors"
+                      title="Düzenle"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={() => deleteNote(note.id)}
+                      className="p-1.5 rounded-lg text-soft-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                      title="Sil"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
                   </div>
-                ) : (
-                  <div>
-                    <p className="text-sm text-soft-700 dark:text-gray-200 leading-relaxed whitespace-pre-wrap">
-                      {note.content}
-                    </p>
-                    <p className="text-xs text-soft-400 dark:text-gray-500 mt-2">
-                      {formatDate(note.updatedAt)}
+                </div>
+
+                {/* Arapça */}
+                <div className="px-4 pt-3 pb-0">
+                  <p className="font-arabic text-lg text-soft-600 dark:text-gray-400 text-right leading-loose line-clamp-2">
+                    {note.arabicText}
+                  </p>
+                </div>
+
+                {/* Varsayılan tercüman çevirisi */}
+                {translationText && (
+                  <div className="px-4 pt-2">
+                    <p className="text-sm text-soft-600 dark:text-gray-300 leading-relaxed italic border-l-2 border-primary-300 dark:border-primary-700 pl-3">
+                      {translationText}
                     </p>
                   </div>
                 )}
+
+                {/* Not içeriği */}
+                <div className="px-4 pb-4 pt-2">
+                  {editingId === note.id ? (
+                    <div>
+                      <textarea
+                        value={editContent}
+                        onChange={(e) => setEditContent(e.target.value)}
+                        rows={4}
+                        autoFocus
+                        className="w-full border border-primary-300 dark:border-primary-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-700 text-soft-700 dark:text-white focus:ring-2 focus:ring-primary-200 focus:outline-none resize-none"
+                      />
+                      <div className="flex gap-2 mt-2">
+                        <button
+                          onClick={() => saveEdit(note)}
+                          className="px-3 py-1.5 bg-primary-500 hover:bg-primary-600 text-white rounded-lg text-xs font-medium transition-colors"
+                        >
+                          Kaydet
+                        </button>
+                        <button
+                          onClick={() => setEditingId(null)}
+                          className="px-3 py-1.5 border border-soft-200 dark:border-gray-600 text-soft-500 dark:text-gray-400 rounded-lg text-xs font-medium hover:bg-soft-50 dark:hover:bg-gray-700 transition-colors"
+                        >
+                          İptal
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      <div className="mt-2 bg-amber-50 dark:bg-amber-900/20 rounded-lg px-3 py-2 border border-amber-100 dark:border-amber-800/30">
+                        <p className="text-xs text-amber-600 dark:text-amber-400 font-medium mb-0.5">Notum</p>
+                        <p className="text-sm text-soft-700 dark:text-gray-200 leading-relaxed whitespace-pre-wrap">
+                          {note.content}
+                        </p>
+                      </div>
+                      <p className="text-xs text-soft-400 dark:text-gray-500 mt-2">
+                        {formatDate(note.updatedAt)}
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

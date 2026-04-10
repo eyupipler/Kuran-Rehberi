@@ -2,10 +2,14 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
+export type FontSize = 'sm' | 'md' | 'lg';
+
 interface Settings {
   defaultTranslator: string;
   defaultLanguage: string;
   onlyMeal: boolean;
+  compactMode: boolean;
+  fontSize: FontSize;
 }
 
 interface SettingsContextType {
@@ -13,12 +17,16 @@ interface SettingsContextType {
   updateTranslator: (translator: string) => void;
   updateLanguage: (language: string) => void;
   updateOnlyMeal: (value: boolean) => void;
+  updateCompactMode: (value: boolean) => void;
+  updateFontSize: (value: FontSize) => void;
 }
 
 const defaultSettings: Settings = {
   defaultTranslator: 'tr.diyanet',
   defaultLanguage: 'tr',
   onlyMeal: false,
+  compactMode: false,
+  fontSize: 'md',
 };
 
 const SettingsContext = createContext<SettingsContextType>({
@@ -26,6 +34,8 @@ const SettingsContext = createContext<SettingsContextType>({
   updateTranslator: () => {},
   updateLanguage: () => {},
   updateOnlyMeal: () => {},
+  updateCompactMode: () => {},
+  updateFontSize: () => {},
 });
 
 export function SettingsProvider({ children }: { children: ReactNode }) {
@@ -49,6 +59,14 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     }
   }, [settings, loaded]);
 
+  // Apply compact mode and font size classes to <html>
+  useEffect(() => {
+    if (!loaded) return;
+    const root = document.documentElement;
+    root.classList.toggle('compact', settings.compactMode);
+    root.setAttribute('data-font-size', settings.fontSize);
+  }, [settings.compactMode, settings.fontSize, loaded]);
+
   const updateTranslator = (translator: string) => {
     setSettings((prev) => ({ ...prev, defaultTranslator: translator }));
   };
@@ -61,8 +79,16 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     setSettings((prev) => ({ ...prev, onlyMeal: value }));
   };
 
+  const updateCompactMode = (value: boolean) => {
+    setSettings((prev) => ({ ...prev, compactMode: value }));
+  };
+
+  const updateFontSize = (value: FontSize) => {
+    setSettings((prev) => ({ ...prev, fontSize: value }));
+  };
+
   return (
-    <SettingsContext.Provider value={{ settings, updateTranslator, updateLanguage, updateOnlyMeal }}>
+    <SettingsContext.Provider value={{ settings, updateTranslator, updateLanguage, updateOnlyMeal, updateCompactMode, updateFontSize }}>
       {children}
     </SettingsContext.Provider>
   );

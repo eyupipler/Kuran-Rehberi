@@ -90,13 +90,49 @@ function CompareVersePanel({
   translations,
   label,
   onClear,
+  words,
+  selectedRoot,
 }: {
   verse: VerseData;
   translations: Translation[];
   label: string;
   onClear?: () => void;
+  words?: Word[];
+  selectedRoot?: string | null;
 }) {
   const trList = translations.filter((t) => t.language === 'tr');
+
+  // Render Arabic text with root highlights if word data is available
+  const renderArabic = () => {
+    if (!words || words.length === 0) {
+      return (
+        <p className="font-arabic text-xl sm:text-2xl leading-loose text-soft-800 dark:text-white text-right arabic-text">
+          {verse.arabicText}
+        </p>
+      );
+    }
+    const sortedWords = [...words].sort((a, b) => a.position - b.position);
+    return (
+      <p className="font-arabic text-xl sm:text-2xl leading-loose text-soft-800 dark:text-white text-right arabic-text">
+        <span dir="rtl">
+          {sortedWords.map((w, i) => {
+            const isHighlighted = !!(selectedRoot && w.root === selectedRoot);
+            return (
+              <span key={w.position}>
+                {i > 0 && ' '}
+                {isHighlighted ? (
+                  <mark className="bg-primary-200 dark:bg-primary-800/60 text-primary-900 dark:text-primary-100 rounded px-0.5 not-italic font-arabic">
+                    {w.arabicWord}
+                  </mark>
+                ) : w.arabicWord}
+              </span>
+            );
+          })}
+        </span>
+      </p>
+    );
+  };
+
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between mb-3 flex-shrink-0">
@@ -127,9 +163,7 @@ function CompareVersePanel({
 
       {/* Arapça */}
       <div className="bg-soft-50 dark:bg-gray-700/50 rounded-xl p-4 mb-4 flex-shrink-0">
-        <p className="font-arabic text-xl sm:text-2xl leading-loose text-soft-800 dark:text-white text-right arabic-text">
-          {verse.arabicText}
-        </p>
+        {renderArabic()}
         <p className="text-xs text-soft-400 text-right mt-1">
           {transliterate(verse.arabicText)}
         </p>
@@ -501,17 +535,73 @@ export default function VersePage() {
             : verse.arabicText
           }
         </p>
-        {activeRoot && (
-          <p className="text-xs text-primary-500 dark:text-primary-400 text-right mt-1 font-medium">
-            Kök: {activeRoot}{selectedWord && !hoveredRoot ? ' — tıklandı, karşılaştırma listesinde işaretli' : ' — karşılaştırma listesinde işaretlendi'}
-          </p>
-        )}
         {!activeRoot && (
           <p className="text-sm text-soft-400 text-right mt-1">
             {transliterate(verse.arabicText)}
           </p>
         )}
       </div>
+
+      {/* ── Seçili Kelime Detay Kartı ── */}
+      {selectedWord && (
+        <div className="mb-6 p-4 bg-primary-50 dark:bg-primary-900/20 rounded-xl border border-primary-200 dark:border-primary-800 shadow-soft">
+          <div className="flex flex-col sm:flex-row gap-4 items-start">
+            {/* Arapça kelime */}
+            <div className="flex-shrink-0 text-center">
+              <span className="text-3xl font-arabic text-primary-700 dark:text-primary-300 block">{selectedWord.arabicWord}</span>
+              <span className="text-xs text-soft-400 dark:text-gray-500">{transliterate(selectedWord.arabicWord)}</span>
+            </div>
+            {/* Detaylar */}
+            <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {selectedWord.translationTr && (
+                <div>
+                  <p className="text-xs text-soft-500 dark:text-gray-400 font-medium">Türkçe Anlam</p>
+                  <p className="text-sm text-soft-800 dark:text-white font-medium">{selectedWord.translationTr}</p>
+                </div>
+              )}
+              {selectedWord.root && (
+                <div>
+                  <p className="text-xs text-soft-500 dark:text-gray-400 font-medium">Kök</p>
+                  <Link
+                    href={`/roots/${encodeURIComponent(selectedWord.root)}`}
+                    className="text-sm text-primary-600 dark:text-primary-400 font-arabic hover:underline"
+                  >
+                    {selectedWord.root}
+                  </Link>
+                  {selectedWord.rootMeaningTr && (
+                    <span className="text-xs text-soft-500 dark:text-gray-400 ml-2">({selectedWord.rootMeaningTr})</span>
+                  )}
+                  {selectedWord.rootOccurrenceCount > 0 && (
+                    <span className="text-xs text-soft-400 dark:text-gray-500 block">Kuran'da {selectedWord.rootOccurrenceCount} kez</span>
+                  )}
+                </div>
+              )}
+              {selectedWord.partOfSpeech && (
+                <div>
+                  <p className="text-xs text-soft-500 dark:text-gray-400 font-medium">Kelime Türü</p>
+                  <p className="text-sm text-soft-700 dark:text-gray-300">{getPartOfSpeechTr(selectedWord.partOfSpeech)}</p>
+                </div>
+              )}
+              {selectedWord.lemma && (
+                <div>
+                  <p className="text-xs text-soft-500 dark:text-gray-400 font-medium">Lemma</p>
+                  <span className="text-sm font-arabic text-soft-700 dark:text-gray-300">{selectedWord.lemma}</span>
+                  <span className="text-xs text-soft-400 ml-1">({transliterate(selectedWord.lemma)})</span>
+                </div>
+              )}
+            </div>
+            {/* Kapat */}
+            <button
+              onClick={() => setSelectedWord(null)}
+              className="flex-shrink-0 p-1 rounded text-soft-400 hover:text-soft-600 dark:hover:text-gray-300 transition-colors self-start"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── Karşılaştırma Paneli ── */}
       {compareMode && (
@@ -542,6 +632,8 @@ export default function VersePage() {
                 verse={verse}
                 translations={translations}
                 label="Mevcut Ayet"
+                words={words}
+                selectedRoot={selectedWord?.root ?? null}
               />
             </div>
 
@@ -557,6 +649,8 @@ export default function VersePage() {
                   translations={compareData.translations}
                   label="Karşılaştırılan Ayet"
                   onClear={resetCompare}
+                  words={compareData.words}
+                  selectedRoot={selectedWord?.root ?? null}
                 />
               ) : compareSelectedSurah ? (
                 /* Ayet seçimi */

@@ -28,6 +28,48 @@ function expandVerseNumbers(numStr) {
 }
 
 /**
+ * Satır içi yerleştirilmiş ayet numaralarını tespit edip metni böler.
+ * Örnek: "17O zaman... 18Biz çok yakında..." → [{nums:[17], text:"O zaman..."}, {nums:[18], text:"Biz..."}]
+ */
+function splitInlineVerses(startNums, text) {
+  const maxStart = Math.max(...startNums);
+  // Pattern: space + 1-3 digits + capital letter or curly quote
+  const inlineRe = /\s(\d{1,3})([\u201CA-ZÂÎÛÖÜÇŞĞİ])/g;
+  const splits = [];
+  let lastIdx = 0;
+  let lastNums = startNums;
+  let lastMax = maxStart;
+  let m;
+
+  while ((m = inlineRe.exec(text)) !== null) {
+    const verseNum = parseInt(m[1]);
+    // Must be the next verse (greater than current max, within reasonable range)
+    if (verseNum > lastMax && verseNum <= lastMax + 20) {
+      const segment = text.substring(lastIdx, m.index).trim();
+      if (segment.length > 2) {
+        splits.push({ nums: lastNums, text: segment });
+      }
+      lastNums = [verseNum];
+      lastMax = verseNum;
+      // Skip past the space: m.index+1 = start of digit, m.index+1+m[1].length = capital letter
+      lastIdx = m.index + 1 + m[1].length;
+      // Put the capital letter back into the remaining text
+      text = text.substring(0, m.index + 1 + m[1].length) + text.substring(m.index + 1 + m[1].length);
+      // Reposition: lastIdx points to the capital letter
+      lastIdx = m.index + 1 + m[1].length;
+      inlineRe.lastIndex = lastIdx;
+    }
+  }
+
+  const remaining = text.substring(lastIdx).trim();
+  if (remaining.length > 2) {
+    splits.push({ nums: lastNums, text: remaining });
+  }
+
+  return splits.length > 0 ? splits : [{ nums: startNums, text: text.trim() }];
+}
+
+/**
  * Parse all (revOrder/surahId, SurahName/...) patterns from a citation line.
  * Returns array of {surahId, verseNums} — verseNums may be empty if we can't parse the range.
  */
@@ -240,11 +282,23 @@ function parseYilmaz() {
     if (verseMatch) {
       const nums = expandVerseNumbers(verseMatch[1]);
       const vText = verseMatch[2];
-      const sid = currentExplicitSurahId; // null means "use from citation"
-      necmBuffer.push({ surahId: sid, nums, text: vText });
+      const sid = currentExplicitSurahId;
+      // Split inline verse numbers (e.g. "17O zaman... 18Biz...")
+      const parts = splitInlineVerses(nums, vText);
+      for (const part of parts) {
+        necmBuffer.push({ surahId: sid, nums: part.nums, text: part.text });
+      }
     } else if (necmBuffer.length > 0) {
-      // Continuation line: append to last entry
+      // Continuation line: append to last entry, then check for inline splits
       necmBuffer[necmBuffer.length - 1].text += ' ' + line;
+      const last = necmBuffer[necmBuffer.length - 1];
+      const parts = splitInlineVerses(last.nums, last.text);
+      if (parts.length > 1) {
+        necmBuffer.pop();
+        for (const part of parts) {
+          necmBuffer.push({ surahId: last.surahId, nums: part.nums, text: part.text });
+        }
+      }
     }
   }
 

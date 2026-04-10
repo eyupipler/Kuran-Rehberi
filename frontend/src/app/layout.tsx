@@ -144,7 +144,7 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
       </head>
-      <body className="min-h-screen">
+      <body className="min-h-screen bg-gray-900 text-gray-100">
         <SettingsProvider>
           <NotesProvider>
           <FavoritesProvider>
@@ -152,7 +152,7 @@ export default function RootLayout({
 
           <div className="flex">
             <SurahSidebar />
-            <main className="flex-1 min-w-0 px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+            <main className="flex-1 min-w-0 px-4 sm:px-6 lg:px-8 py-6 sm:py-8 bg-gray-900">
               {children}
             </main>
           </div>

@@ -16,7 +16,7 @@ export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [translators, setTranslators] = useState<Translator[]>([]);
-  const { settings, updateTranslator, updateLanguage, updateOnlyMeal } = useSettings();
+  const { settings, updateTranslator, updateLanguage, updateOnlyMeal, updateCompactMode, updateFontSize } = useSettings();
   const { favorites, setPanelOpen, panelOpen } = useFavorites();
 
   useEffect(() => {
@@ -172,25 +172,71 @@ export default function Navbar() {
                 </select>
               </div>
             </div>
-            <div className="mt-3 flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-soft-600 dark:text-gray-300">Sadece Meal Modu</p>
-                <p className="text-xs text-soft-400 dark:text-gray-500">Sure sayfalarında Arapça metni gizler</p>
+
+            {/* Font Büyüklüğü */}
+            <div className="mt-3">
+              <label className="block text-sm font-medium text-soft-600 dark:text-gray-300 mb-2">
+                Font Büyüklüğü
+              </label>
+              <div className="flex gap-2">
+                {(['sm', 'md', 'lg'] as const).map((size) => (
+                  <button
+                    key={size}
+                    onClick={() => updateFontSize(size)}
+                    className={`flex-1 py-1.5 rounded-lg text-sm font-medium border transition-all ${
+                      settings.fontSize === size
+                        ? 'bg-primary-500 border-primary-500 text-white'
+                        : 'border-soft-200 dark:border-gray-600 text-soft-600 dark:text-gray-300 hover:border-primary-300'
+                    }`}
+                  >
+                    {size === 'sm' ? 'Küçük' : size === 'md' ? 'Normal' : 'Büyük'}
+                  </button>
+                ))}
               </div>
-              <button
-                onClick={() => updateOnlyMeal(!settings.onlyMeal)}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
-                  settings.onlyMeal ? 'bg-primary-500' : 'bg-soft-200 dark:bg-gray-600'
-                }`}
-              >
-                <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
-                    settings.onlyMeal ? 'translate-x-6' : 'translate-x-1'
-                  }`}
-                />
-              </button>
             </div>
-            <p className="text-xs text-soft-400 mt-2">Ayarlarınız cihazınıza yerel olarak kaydedilir.</p>
+
+            <div className="mt-3 flex flex-col sm:flex-row gap-4">
+              {/* Sadece Meal Modu */}
+              <div className="flex items-center justify-between flex-1">
+                <div>
+                  <p className="text-sm font-medium text-soft-600 dark:text-gray-300">Sadece Meal Modu</p>
+                  <p className="text-xs text-soft-400 dark:text-gray-500">Arapça metni gizler</p>
+                </div>
+                <button
+                  onClick={() => updateOnlyMeal(!settings.onlyMeal)}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
+                    settings.onlyMeal ? 'bg-primary-500' : 'bg-soft-200 dark:bg-gray-600'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                      settings.onlyMeal ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
+
+              {/* Kompakt Mod */}
+              <div className="flex items-center justify-between flex-1">
+                <div>
+                  <p className="text-sm font-medium text-soft-600 dark:text-gray-300">Kompakt Mod</p>
+                  <p className="text-xs text-soft-400 dark:text-gray-500">Daha sıkışık düzen</p>
+                </div>
+                <button
+                  onClick={() => updateCompactMode(!settings.compactMode)}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
+                    settings.compactMode ? 'bg-primary-500' : 'bg-soft-200 dark:bg-gray-600'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                      settings.compactMode ? 'translate-x-6' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
+            </div>
+            <p className="text-xs text-soft-400 mt-3">Ayarlarınız cihazınıza yerel olarak kaydedilir.</p>
           </div>
         )}
 

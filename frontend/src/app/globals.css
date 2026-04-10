@@ -6,17 +6,16 @@
 @import url('https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Inter:wght@300;400;500;600;700&display=swap');
 
 :root {
-  --foreground-rgb: 55, 65, 81;
-  --background-start-rgb: 254, 253, 251;
-  --background-end-rgb: 250, 245, 235;
+  --foreground-rgb: 229, 231, 235;
+  --background-start-rgb: 17, 24, 39;
+  --background-end-rgb: 31, 41, 55;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --foreground-rgb: 229, 231, 235;
-    --background-start-rgb: 24, 24, 27;
-    --background-end-rgb: 39, 39, 42;
-  }
+/* dark class stratejisi — her zaman koyu mod */
+.dark {
+  --foreground-rgb: 229, 231, 235;
+  --background-start-rgb: 17, 24, 39;
+  --background-end-rgb: 31, 41, 55;
 }
 
 * {
@@ -90,21 +89,19 @@ input::placeholder {
   @apply text-soft-400;
 }
 
-/* Dark mode input */
-@media (prefers-color-scheme: dark) {
-  input[type="text"],
-  input[type="search"],
-  select,
-  textarea {
-    color: #ffffff !important;
-    background-color: #374151;
-    border-color: #4b5563;
-  }
+/* Dark mode input — .dark sınıfı ile */
+.dark input[type="text"],
+.dark input[type="search"],
+.dark select,
+.dark textarea {
+  color: #ffffff !important;
+  background-color: #374151;
+  border-color: #4b5563;
+}
 
-  select option {
-    background-color: #374151;
-    color: #ffffff;
-  }
+.dark select option {
+  background-color: #374151;
+  color: #ffffff;
 }
 
 /* Word card for verse page - daha yumuşak */
@@ -149,6 +146,51 @@ input::placeholder {
   .translation-card {
     @apply p-4;
   }
+}
+
+/* ── Font size adjustments ── */
+:root, [data-font-size="md"] {
+  --ui-font-size: 1rem;
+  --arabic-font-size: 1.5rem;
+  --arabic-font-size-lg: 2rem;
+}
+[data-font-size="sm"] {
+  --ui-font-size: 0.875rem;
+  --arabic-font-size: 1.25rem;
+  --arabic-font-size-lg: 1.75rem;
+}
+[data-font-size="lg"] {
+  --ui-font-size: 1.125rem;
+  --arabic-font-size: 1.75rem;
+  --arabic-font-size-lg: 2.25rem;
+}
+
+body {
+  font-size: var(--ui-font-size);
+}
+
+.arabic-text,
+.font-arabic {
+  font-size: var(--arabic-font-size) !important;
+}
+
+p.text-2xl.font-arabic,
+p.text-3xl.font-arabic {
+  font-size: var(--arabic-font-size-lg) !important;
+}
+
+/* ── Compact mode ── */
+.compact .translation-card {
+  @apply p-3;
+}
+.compact .root-occurrence {
+  @apply p-3;
+}
+.compact .word-card {
+  @apply p-2;
+}
+.compact main {
+  @apply py-4 sm:py-5;
 }
 
 /* Smooth scrollbar */
