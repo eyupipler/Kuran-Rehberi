@@ -144,7 +144,7 @@ export default function SurahPage() {
       </div>
 
       {/* Ayetler */}
-      <div className={onlyMeal ? 'space-y-3' : 'space-y-4 sm:space-y-6'}>
+      <div className={onlyMeal ? 'verse-list space-y-3' : 'verse-list space-y-4 sm:space-y-6'}>
         {verses.map((verse) => {
           const favorited = isFavorite(surah.id, verse.verseNumber);
           return (
@@ -152,8 +152,8 @@ export default function SurahPage() {
               key={verse.id}
               id={`verse-${verse.verseNumber}`}
               className={onlyMeal
-                ? 'p-3 sm:p-4 border border-soft-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800'
-                : 'p-4 sm:p-6 border border-soft-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 hover:shadow-soft-md transition-all duration-200'
+                ? 'verse-item p-3 sm:p-4 border border-soft-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800'
+                : 'verse-item p-4 sm:p-6 border border-soft-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 hover:shadow-soft-md transition-all duration-200'
               }
             >
               {onlyMeal ? (
@@ -161,9 +161,15 @@ export default function SurahPage() {
                   <span className="verse-number flex-shrink-0">{verse.verseNumber}</span>
                   <div className="flex-1">
                     <Link href={`/verse/${surah.id}/${verse.verseNumber}`} className="block">
-                      <p className="text-soft-600 dark:text-gray-300 leading-relaxed text-sm sm:text-base">
-                        {verse.translation}
-                      </p>
+                      {verse.translation ? (
+                        <p className="prose-text text-soft-600 dark:text-gray-300 leading-relaxed">
+                          {verse.translation}
+                        </p>
+                      ) : (
+                        <p className="text-soft-400 dark:text-gray-600 text-sm italic">
+                          (Bu ayetin meâli önceki ayette verilmiştir)
+                        </p>
+                      )}
                     </Link>
                   </div>
                   <button
@@ -200,14 +206,20 @@ export default function SurahPage() {
                     </button>
                   </div>
 
-                  {verse.translation && (
-                    <div className="pl-10 sm:pl-12 border-l-2 border-primary-200 mt-3">
-                      <p className="text-soft-600 dark:text-gray-300 leading-relaxed text-sm sm:text-base">
+                  <div className="pl-10 sm:pl-12 border-l-2 border-primary-200 mt-3">
+                    {verse.translation ? (
+                      <p className="prose-text text-soft-600 dark:text-gray-300 leading-relaxed">
                         {verse.translation}
                       </p>
+                    ) : (
+                      <p className="text-soft-400 dark:text-gray-600 text-sm italic">
+                        (Bu ayetin meâli önceki ayette verilmiştir)
+                      </p>
+                    )}
+                    {verse.translatorName && (
                       <p className="text-xs text-soft-400 mt-2">{verse.translatorName}</p>
-                    </div>
-                  )}
+                    )}
+                  </div>
 
                   <div className="mt-4 pl-10 sm:pl-12">
                     <Link

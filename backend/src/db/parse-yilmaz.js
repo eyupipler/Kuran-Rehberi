@@ -30,43 +30,79 @@ function expandVerseNumbers(numStr) {
 /**
  * Satır içi yerleştirilmiş ayet numaralarını tespit edip metni böler.
  * Örnek: "17O zaman... 18Biz çok yakında..." → [{nums:[17], text:"O zaman..."}, {nums:[18], text:"Biz..."}]
+ *
+ * Yılmaz mealinde bazı ayetlerde geri-sıralı veya tekrarlı numara kalıpları var
+ * (örn: "25Mûsâ: 'Rabbim! 33Seni... 34ve... 25göğsümü aç, 26işimi...").
+ * Bu fonksiyon tüm inline numaraları (ileriye veya geriye) yakalar ve
+ * aynı ayet numarası için parçaları birleştirir, sonra sıralar.
  */
 function splitInlineVerses(startNums, text) {
-  const maxStart = Math.max(...startNums);
-  // Pattern: space + 1-3 digits + capital letter or curly quote
-  const inlineRe = /\s(\d{1,3})([\u201CA-ZÂÎÛÖÜÇŞĞİ])/g;
-  const splits = [];
-  let lastIdx = 0;
-  let lastNums = startNums;
-  let lastMax = maxStart;
-  let m;
+  // Pattern: (space OR curly-quote) + 1-3 digits + Turkish/Arabic letter (upper or lower) or curly quote
+  // Yılmaz mealinde inline numaralar hem büyük hem küçük harfle başlayabilir
+  // (örn: "25göğsümü", "26işimi", "28ki", '"23Sana' — büyük tırnaktan sonra da gelebilir)
+  // Not: Sayı ile harf ARASINDA boşluk yok — bu false positive'leri engeller
+  const inlineRe = /[\s\u201C\u201D\u2018\u2019](\d{1,3})([\u201C\u201D\u2018\u2019A-ZÂÎÛÖÜÇŞĞİa-züğışçöâîû])/g;
 
+  // Collect all split points in order
+  const splitPoints = [];
+  let m;
   while ((m = inlineRe.exec(text)) !== null) {
-    const verseNum = parseInt(m[1]);
-    // Must be the next verse (greater than current max, within reasonable range)
-    if (verseNum > lastMax && verseNum <= lastMax + 20) {
-      const segment = text.substring(lastIdx, m.index).trim();
-      if (segment.length > 2) {
-        splits.push({ nums: lastNums, text: segment });
-      }
-      lastNums = [verseNum];
-      lastMax = verseNum;
-      // Skip past the space: m.index+1 = start of digit, m.index+1+m[1].length = capital letter
-      lastIdx = m.index + 1 + m[1].length;
-      // Put the capital letter back into the remaining text
-      text = text.substring(0, m.index + 1 + m[1].length) + text.substring(m.index + 1 + m[1].length);
-      // Reposition: lastIdx points to the capital letter
-      lastIdx = m.index + 1 + m[1].length;
-      inlineRe.lastIndex = lastIdx;
+    splitPoints.push({
+      splitAt: m.index,                        // position of the space before the number
+      textStart: m.index + 1 + m[1].length,    // position where the capital letter starts
+      verseNum: parseInt(m[1])
+    });
+  }
+
+  if (splitPoints.length === 0) {
+    return [{ nums: startNums, text: text.trim() }];
+  }
+
+  // Build raw segments
+  const rawSegments = [];
+
+  // First segment: text before the first inline marker → belongs to startNums
+  const firstText = text.substring(0, splitPoints[0].splitAt).trim();
+  if (firstText.length > 1) {
+    rawSegments.push({ nums: startNums, text: firstText });
+  }
+
+  // Each inline marker → next marker (or end of text)
+  for (let i = 0; i < splitPoints.length; i++) {
+    const endPos = i + 1 < splitPoints.length ? splitPoints[i + 1].splitAt : text.length;
+    const segText = text.substring(splitPoints[i].textStart, endPos).trim();
+    if (segText.length > 1) {
+      rawSegments.push({ nums: [splitPoints[i].verseNum], text: segText });
     }
   }
 
-  const remaining = text.substring(lastIdx).trim();
-  if (remaining.length > 2) {
-    splits.push({ nums: lastNums, text: remaining });
+  if (rawSegments.length === 0) {
+    return [{ nums: startNums, text: text.trim() }];
   }
 
-  return splits.length > 0 ? splits : [{ nums: startNums, text: text.trim() }];
+  // Merge segments with the same verse number, preserving first-appearance order
+  const verseMap = new Map(); // key → {nums, texts: []}
+  const verseOrder = [];
+
+  for (const seg of rawSegments) {
+    const key = seg.nums.join(',');
+    if (verseMap.has(key)) {
+      verseMap.get(key).texts.push(seg.text);
+    } else {
+      verseMap.set(key, { nums: seg.nums, texts: [seg.text] });
+      verseOrder.push(key);
+    }
+  }
+
+  // Build result sorted by verse number
+  const result = verseOrder.map(key => {
+    const { nums, texts } = verseMap.get(key);
+    return { nums, text: texts.join(' ') };
+  });
+
+  result.sort((a, b) => a.nums[0] - b.nums[0]);
+
+  return result;
 }
 
 /**

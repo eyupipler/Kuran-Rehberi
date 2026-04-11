@@ -70,6 +70,57 @@ interface RootOccurrence {
   word: string;
 }
 
+/* ─── Türkçe köke göre meal vurgulama ─────────────────────────── */
+function turkishStemVerse(word: string): string {
+  const lower = word.toLowerCase()
+    .replace(/İ/g, 'i').replace(/I/g, 'ı')
+    .replace(/Ğ/g, 'ğ').replace(/Ş/g, 'ş')
+    .replace(/Ç/g, 'ç').replace(/Ö/g, 'ö').replace(/Ü/g, 'ü');
+  const suffixes = ['lerin', 'larin', 'lerın', 'lerde', 'lardan', 'lerden',
+    'ların', 'lerin', 'lar', 'ler', 'den', 'dan', 'ten', 'tan', 'de', 'da', 'te', 'ta',
+    'nin', 'nın', 'nun', 'nün', 'in', 'ın', 'un', 'ün', 'yi', 'yı', 'yu', 'yü',
+    'ye', 'ya', 'nde', 'nda', 'nden', 'ndan'];
+  let stem = lower;
+  for (const suf of suffixes) {
+    if (stem.length > suf.length + 2 && stem.endsWith(suf)) {
+      stem = stem.slice(0, stem.length - suf.length);
+      break;
+    }
+  }
+  return stem.length > 4 ? stem.slice(0, 5) : stem;
+}
+
+function MealWithHighlightVerse({ meal, translationTr }: { meal: string; translationTr: string | null }) {
+  if (!meal || !translationTr) return <>{meal}</>;
+  const terms = translationTr.split(/[,،\/;]+/).map(t => t.trim()).filter(t => t.length > 2);
+  for (const term of terms) {
+    try {
+      const stem = turkishStemVerse(term);
+      if (stem.length < 3) continue;
+      const escaped = stem.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const trChars = 'a-züğışçöâîûA-ZÜĞIŞÇÖÂÎÛa-zğışçöüâîû';
+      const regex = new RegExp(`(${escaped}[${trChars}]*)`, 'gi');
+      if (regex.test(meal)) {
+        const parts = meal.split(new RegExp(`(${escaped}[${trChars}]*)`, 'gi'));
+        if (parts.length > 1) {
+          return (
+            <>
+              {parts.map((part, i) =>
+                i % 2 === 1 ? (
+                  <mark key={i} className="bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300 rounded px-0.5 not-italic font-medium">
+                    {part}
+                  </mark>
+                ) : part
+              )}
+            </>
+          );
+        }
+      }
+    } catch { continue; }
+  }
+  return <>{meal}</>;
+}
+
 const getPartOfSpeechTr = (pos: string) => {
   const posMap: { [key: string]: string } = {
     'N': 'İsim', 'PN': 'Özel İsim', 'V': 'Fiil', 'ADJ': 'Sıfat', 'ADV': 'Zarf',
@@ -101,6 +152,11 @@ function CompareVersePanel({
   selectedRoot?: string | null;
 }) {
   const trList = translations.filter((t) => t.language === 'tr');
+
+  // Find translationTr for the selected root from this panel's words
+  const selectedWordTr = words && selectedRoot
+    ? words.find(w => w.root === selectedRoot)?.translationTr ?? null
+    : null;
 
   // Render Arabic text with root highlights if word data is available
   const renderArabic = () => {
@@ -177,7 +233,9 @@ function CompareVersePanel({
         {trList.map((t) => (
           <div key={t.translatorCode} className="p-3 bg-white dark:bg-gray-800 rounded-lg border border-soft-100 dark:border-gray-700">
             <p className="text-xs font-medium text-soft-500 dark:text-gray-400 mb-1">{t.translatorName}</p>
-            <p className="text-sm text-soft-700 dark:text-gray-200 leading-relaxed">{t.text}</p>
+            <p className="prose-text text-soft-700 dark:text-gray-200 leading-relaxed">
+              <MealWithHighlightVerse meal={t.text} translationTr={selectedWordTr} />
+            </p>
           </div>
         ))}
       </div>
@@ -818,7 +876,7 @@ export default function VersePage() {
                     {t.language === 'tr' ? 'Türkçe' : t.language === 'en' ? 'İngilizce' : t.language === 'ar' ? 'Arapça' : t.language}
                   </span>
                 </div>
-                <p className="text-soft-600 dark:text-gray-300 leading-relaxed text-sm sm:text-base">{t.text}</p>
+                <p className="prose-text text-soft-600 dark:text-gray-300 leading-relaxed">{t.text}</p>
               </div>
             ))}
           </div>

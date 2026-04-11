@@ -151,22 +151,31 @@ input::placeholder {
 /* ── Font size adjustments ── */
 :root, [data-font-size="md"] {
   --ui-font-size: 1rem;
+  --prose-font-size: 0.9375rem;
   --arabic-font-size: 1.5rem;
   --arabic-font-size-lg: 2rem;
 }
 [data-font-size="sm"] {
   --ui-font-size: 0.875rem;
+  --prose-font-size: 0.8125rem;
   --arabic-font-size: 1.25rem;
   --arabic-font-size-lg: 1.75rem;
 }
 [data-font-size="lg"] {
   --ui-font-size: 1.125rem;
+  --prose-font-size: 1.0625rem;
   --arabic-font-size: 1.75rem;
   --arabic-font-size-lg: 2.25rem;
 }
 
 body {
   font-size: var(--ui-font-size);
+}
+
+/* Verse/translation prose text — scales with font size setting */
+.prose-text {
+  font-size: var(--prose-font-size) !important;
+  line-height: 1.75;
 }
 
 .arabic-text,
@@ -179,7 +188,29 @@ p.text-3xl.font-arabic {
   font-size: var(--arabic-font-size-lg) !important;
 }
 
-/* ── Compact mode ── */
+/* ── Compact mode — RSS feed style ── */
+html.compact .verse-list {
+  gap: 0 !important;
+}
+
+html.compact .verse-item {
+  background: transparent !important;
+  border: none !important;
+  border-bottom: 1px solid #1f2937 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  padding: 0.625rem 0.25rem !important;
+}
+
+html.compact .verse-item:last-child {
+  border-bottom: none !important;
+}
+
+html.compact .verse-item:hover {
+  background: rgba(96, 165, 250, 0.04) !important;
+}
+
+/* Legacy compact styles */
 .compact .translation-card {
   @apply p-3;
 }

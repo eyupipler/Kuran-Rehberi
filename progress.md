@@ -138,6 +138,17 @@ CSS değişkenleri `data-font-size` attribute ve `.compact` sınıfı üzerinden
 
 ## Son Yapılan Değişiklikler
 
+### 2026-04-11 — TODO 2. tur tamamlandı
+- **Günün Ayeti**: Anasayfanın üstünde tarih tabanlı deterministik rastgele ayet, sadece Türkçe, varsayılan tercümanla
+- **Yılmaz meali null ayetler**: Boş çeviriler için "(Bu ayetin meâli önceki ayette verilmiştir)" mesajı
+- **Font büyüklüğü**: `--prose-font-size` CSS değişkeni ile `.prose-text` sınıfı — meal metinleri de font boyutuyla ölçeklenir
+- **Kompakt mod**: `verse-item` / `verse-list` sınıfları + RSS akışı stili (kutusuz, bölücü çizgili)
+- **Karşılaştırma paneli Türkçe highlight**: `MealWithHighlightVerse` fonksiyonu, seçili kelimenin kökünü Türkçe çevirilerde de vurgular
+- **Kelime kökü varsayılan tercüman**: `translatorOverride ?? settings.defaultTranslator` pattern ile localStorage'dan gelen ayar doğru yansıtılır
+- **Kök sayfası MealWithHighlight iyileştirmesi**: Önce tam eşleşme, sonra kök eşleşme; daha geniş Türkçe karakter seti
+- **Kök sayfası null translationTr**: Her zaman bir şey gösterilir (`occ.translationTr || rootInfo.meaningTr || transliterateRoot`)
+- **Logo yeniden tasarımı**: Inline SVG logo (kitap + ق harfi + mavi daire)
+
 ### 2026-04-11 — Yılmaz meali temizleme
 - **39 ayette gömülü ayet numarası** temizlendi (`\s\d+[Capital]` → numara çıkarıldı)
 - `tr.yilmaz.json` ve `kuran.db` güncellendi

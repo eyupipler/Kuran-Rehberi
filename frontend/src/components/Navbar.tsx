@@ -31,7 +31,7 @@ export default function Navbar() {
       <div className="px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16 items-center">
           {/* Logo */}
-          <a href="/" className="flex items-center gap-2 text-xl font-semibold text-primary-600 hover:text-primary-700 transition-colors flex-shrink-0">
+          <a href="/" className="flex items-center gap-2.5 flex-shrink-0 group">
             <span className="flex-shrink-0 w-9 h-9 rounded-full overflow-hidden ring-2 ring-primary-600">
               <Image
                 src="/logo.png"
@@ -41,7 +41,10 @@ export default function Navbar() {
                 className="w-full h-full object-cover"
               />
             </span>
-            Kuran Rehberi
+            <div className="flex flex-col leading-none">
+              <span className="text-base font-bold text-white group-hover:text-primary-300 transition-colors tracking-tight">Kuran</span>
+              <span className="text-[11px] font-medium text-primary-400 group-hover:text-primary-300 transition-colors tracking-widest uppercase">Rehberi</span>
+            </div>
           </a>
 
           {/* Desktop Menu */}

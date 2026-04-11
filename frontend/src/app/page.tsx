@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { API_BASE } from '@/config';
+import { useSettings } from '@/context/SettingsContext';
 
 interface Surah {
   id: number;
@@ -12,6 +13,14 @@ interface Surah {
   totalVerses: number;
   revelationType: 'Mekki' | 'Medeni';
   revelationOrder: number;
+}
+
+interface DailyVerse {
+  surahId: number;
+  surahName: string;
+  verseNumber: number;
+  text: string;
+  translatorName: string;
 }
 
 type SortKey = 'name' | 'id' | 'revelation' | 'verses';
@@ -36,6 +45,8 @@ export default function Home() {
   const [error, setError] = useState(false);
   const [sortKey, setSortKey] = useState<SortKey>('id');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
+  const [dailyVerse, setDailyVerse] = useState<DailyVerse | null>(null);
+  const { settings } = useSettings();
 
   useEffect(() => {
     fetch(`${API_BASE}/surahs`)
@@ -43,6 +54,31 @@ export default function Home() {
       .then((data) => { setSurahs(data); setLoading(false); })
       .catch((err) => { console.error('Sureler yüklenemedi:', err); setError(true); setLoading(false); });
   }, []);
+
+  // Günün ayetini yükle (surahs yüklendikten sonra)
+  useEffect(() => {
+    if (surahs.length === 0) return;
+    const dayNum = Math.floor(Date.now() / 86400000);
+    const surah = surahs[dayNum % surahs.length];
+    const verseNum = (dayNum % surah.totalVerses) + 1;
+    const translator = settings.defaultTranslator || 'tr.diyanet';
+    fetch(`${API_BASE}/surahs/${surah.id}/verses?translator=${translator}`)
+      .then(r => r.json())
+      .then(data => {
+        const verse = data.verses?.find((v: { verseNumber: number }) => v.verseNumber === verseNum)
+          || data.verses?.[0];
+        if (verse?.translation) {
+          setDailyVerse({
+            surahId: surah.id,
+            surahName: surah.name,
+            verseNumber: verse.verseNumber,
+            text: verse.translation,
+            translatorName: verse.translatorName || '',
+          });
+        }
+      })
+      .catch(() => {});
+  }, [surahs, settings.defaultTranslator]);
 
   function handleSort(key: SortKey) {
     if (sortKey === key) {
@@ -94,6 +130,27 @@ export default function Home() {
 
   return (
     <div>
+      {/* Günün Ayeti */}
+      {dailyVerse && (
+        <Link href={`/verse/${dailyVerse.surahId}/${dailyVerse.verseNumber}`}>
+          <div className="mb-7 rounded-xl border border-primary-700/40 bg-gradient-to-br from-primary-900/30 to-primary-800/10 p-5 hover:border-primary-600/60 transition-all duration-200 group cursor-pointer">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-xs font-bold uppercase tracking-widest text-primary-400">Günün Ayeti</span>
+              <span className="flex-1 h-px bg-primary-700/30"></span>
+              <span className="text-xs text-soft-500 dark:text-gray-500">
+                {dailyVerse.surahName} Suresi · {dailyVerse.verseNumber}. Ayet
+              </span>
+            </div>
+            <p className="text-soft-200 dark:text-gray-200 leading-relaxed text-sm sm:text-base prose-text group-hover:text-white transition-colors">
+              {dailyVerse.text}
+            </p>
+            {dailyVerse.translatorName && (
+              <p className="text-xs text-soft-500 dark:text-gray-500 mt-2">{dailyVerse.translatorName}</p>
+            )}
+          </div>
+        </Link>
+      )}
+
       {/* Başlık */}
       <div className="mb-6">
         <h1 className="text-2xl sm:text-3xl font-semibold text-soft-800 dark:text-white mb-1">

@@ -126,16 +126,14 @@ function ArabicWithHighlight({ text, targetWord, wordPosition }: { text: string;
 
 // Türkçe ses değişimleri için kök normalize et
 function turkishStem(word: string): string {
-  // Küçük harfe çevir, Türkçe karakterleri normalize et
   const lower = word.toLowerCase()
     .replace(/İ/g, 'i').replace(/I/g, 'ı')
     .replace(/Ğ/g, 'ğ').replace(/Ş/g, 'ş')
     .replace(/Ç/g, 'ç').replace(/Ö/g, 'ö').replace(/Ü/g, 'ü');
-  // Son ek kaldır (en, er, in, un, ün, ler, lar, de, da, dan, den, a, e, i, ı, u, ü)
-  const suffixes = ['lerin', 'larin', 'lerın', 'lerin', 'lerde', 'lardan', 'lerden',
-    'ların', 'lerin', 'lar', 'ler', 'den', 'dan', 'ten', 'tan', 'de', 'da', 'te', 'ta',
+  const suffixes = ['lerin', 'larin', 'lerde', 'lardan', 'lerden',
+    'ların', 'lar', 'ler', 'den', 'dan', 'ten', 'tan', 'de', 'da', 'te', 'ta',
     'nin', 'nın', 'nun', 'nün', 'in', 'ın', 'un', 'ün', 'yi', 'yı', 'yu', 'yü',
-    'ye', 'ya', 'le', 'la', 'nde', 'nda', 'nden', 'ndan', 'ler', 'lar'];
+    'ye', 'ya', 'nde', 'nda', 'nden', 'ndan'];
   let stem = lower;
   for (const suf of suffixes) {
     if (stem.length > suf.length + 2 && stem.endsWith(suf)) {
@@ -143,9 +141,10 @@ function turkishStem(word: string): string {
       break;
     }
   }
-  // İlk 4 karakter yeterli
-  return stem.length > 4 ? stem.slice(0, 4) : stem;
+  return stem.length > 5 ? stem.slice(0, 5) : stem;
 }
+
+const TR_CHARS = 'a-züğışçöâîûA-ZÜĞIŞÇÖÂÎÛ';
 
 // Türkçe meal metninde çeviriyi bulup vurgula
 function MealWithHighlight({ meal, translationTr }: { meal: string; translationTr: string | null }) {
@@ -158,13 +157,28 @@ function MealWithHighlight({ meal, translationTr }: { meal: string; translationT
 
   for (const term of terms) {
     try {
+      // 1. Try exact case-insensitive substring first (no stemming)
+      const termLower = term.toLowerCase().replace(/İ/g, 'i').replace(/I/g, 'ı');
+      const mealLower = meal.toLowerCase().replace(/İ/g, 'i').replace(/I/g, 'ı');
+      if (termLower.length >= 4 && mealLower.includes(termLower)) {
+        const idx = mealLower.indexOf(termLower);
+        return (
+          <>
+            {meal.slice(0, idx)}
+            <mark className="bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300 rounded px-0.5 not-italic font-medium">
+              {meal.slice(idx, idx + term.length)}
+            </mark>
+            {meal.slice(idx + term.length)}
+          </>
+        );
+      }
+      // 2. Try stem match
       const stem = turkishStem(term);
       if (stem.length < 3) continue;
       const escaped = stem.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      // Match the stem at word boundaries (start of word, followed by any word chars)
-      const regex = new RegExp(`(${escaped}[a-züğışçöâîû]*)`, 'gi');
-      if (regex.test(meal)) {
-        const parts = meal.split(new RegExp(`(${escaped}[a-züğışçöâîû]*)`, 'gi'));
+      const pattern = new RegExp(`(${escaped}[${TR_CHARS}]*)`, 'gi');
+      if (pattern.test(meal)) {
+        const parts = meal.split(new RegExp(`(${escaped}[${TR_CHARS}]*)`, 'gi'));
         if (parts.length > 1) {
           return (
             <>
@@ -202,7 +216,9 @@ export default function RootDetailClient({ rootParam }: Props) {
 
   // State for translators
   const [translators, setTranslators] = useState<{ code: string; name: string }[]>([]);
-  const [selectedTranslator, setSelectedTranslator] = useState<string>(settings.defaultTranslator);
+  // User override — null means "follow settings.defaultTranslator"
+  const [translatorOverride, setTranslatorOverride] = useState<string | null>(null);
+  const selectedTranslator = translatorOverride ?? settings.defaultTranslator;
 
   useEffect(() => {
     // Fetch available translators
@@ -327,22 +343,36 @@ export default function RootDetailClient({ rootParam }: Props) {
             </h2>
 
             <div className="space-y-6">
-              {rootInfo.meaningTr ? (
-                <div>
-                  <ul className="space-y-3">
-                    {rootInfo.meaningTr.split(',').map((meaning, index) => (
-                      <li key={index} className="flex gap-3 text-lg sm:text-xl text-soft-800 dark:text-gray-200 leading-relaxed">
-                        <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary-100 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 flex items-center justify-center text-sm font-bold mt-0.5">
-                          {index + 1}
-                        </span>
-                        <span className="capitalize-first">{meaning.trim()}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ) : (
-                <p className="text-soft-500 italic">Türkçe anlam bulunamadı.</p>
-              )}
+              {(() => {
+                // meaningTr yoksa occurrence'lardan türet
+                const rawMeaning = rootInfo.meaningTr ||
+                  [...new Set(
+                    occurrences
+                      .map(o => o.translationTr)
+                      .filter(Boolean)
+                      .flatMap(t => t!.split(/[,،\/;]+/).map(s => s.trim()).filter(s => s.length > 1))
+                  )].slice(0, 6).join(', ');
+
+                return rawMeaning ? (
+                  <div>
+                    <ul className="space-y-3">
+                      {rawMeaning.split(',').map((meaning, index) => (
+                        <li key={index} className="flex gap-3 text-lg sm:text-xl text-soft-800 dark:text-gray-200 leading-relaxed">
+                          <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary-100 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 flex items-center justify-center text-sm font-bold mt-0.5">
+                            {index + 1}
+                          </span>
+                          <span className="capitalize-first">{meaning.trim()}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    {!rootInfo.meaningTr && (
+                      <p className="text-xs text-soft-400 mt-3 italic">* Kelime kullanımlarından türetilmiştir</p>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-soft-500 italic">Türkçe anlam bulunamadı.</p>
+                );
+              })()}
 
               {rootInfo.meaningEn && (
                 <div className="pt-6 border-t border-soft-100 dark:border-gray-700/50 mt-6">
@@ -404,7 +434,7 @@ export default function RootDetailClient({ rootParam }: Props) {
           <div className={`${activeTab === 'occurrences' ? 'ml-2' : 'ml-auto'} border-l border-soft-200 dark:border-gray-700 pl-3 hidden sm:block`}>
             <select
               value={selectedTranslator}
-              onChange={(e) => { setSelectedTranslator(e.target.value); updateTranslator(e.target.value); }}
+              onChange={(e) => { setTranslatorOverride(e.target.value); updateTranslator(e.target.value); }}
               className="text-sm border border-soft-200 dark:border-gray-600 rounded-lg px-2 py-1 bg-white dark:bg-gray-700 text-soft-600 dark:text-gray-300 focus:ring-1 focus:ring-primary-200 focus:outline-none"
             >
               {translators.map(t => (
@@ -435,7 +465,7 @@ export default function RootDetailClient({ rootParam }: Props) {
                     </span>
                     <p className="text-sm text-soft-600 dark:text-gray-300 leading-relaxed flex-1">
                       {occ.verseMealTr
-                        ? <MealWithHighlight meal={occ.verseMealTr} translationTr={occ.translationTr} />
+                        ? <MealWithHighlight meal={occ.verseMealTr} translationTr={occ.translationTr || rootInfo.meaningTr} />
                         : '-'}
                     </p>
                   </div>
@@ -460,9 +490,9 @@ export default function RootDetailClient({ rootParam }: Props) {
                         <div className="flex flex-col items-center">
                           <span className="text-lg sm:text-xl font-arabic bg-primary-50 dark:bg-primary-900/30 text-primary-700 dark:text-primary-200 px-3 py-1.5 rounded-lg">{occ.word}</span>
                           <span className="text-[10px] sm:text-xs text-soft-400 mt-0.5">{transliterate(occ.word)}</span>
-                          {(occ.translationTr || rootInfo.meaningTr) && (
-                            <span className="text-[10px] sm:text-xs text-primary-500 dark:text-primary-400 mt-0.5">{occ.translationTr || rootInfo.meaningTr}</span>
-                          )}
+                          <span className="text-[10px] sm:text-xs text-primary-500 dark:text-primary-400 mt-0.5">
+                            {occ.translationTr || rootInfo.meaningTr || transliterateRoot(rootInfo.root)}
+                          </span>
                         </div>
                         {occ.partOfSpeech && (
                           <span className="root-badge text-[10px] sm:text-xs">{getPartOfSpeechTr(occ.partOfSpeech)}</span>
@@ -475,8 +505,8 @@ export default function RootDetailClient({ rootParam }: Props) {
                       {/* Sol: Türkçe Meal (çevrilen kelime vurgulanmış) */}
                       <div className="text-left font-serif">
                         {occ.verseMealTr ? (
-                          <p className="text-soft-700 dark:text-gray-300 leading-relaxed text-base">
-                            <MealWithHighlight meal={occ.verseMealTr} translationTr={occ.translationTr} />
+                          <p className="prose-text text-soft-700 dark:text-gray-300 leading-relaxed">
+                            <MealWithHighlight meal={occ.verseMealTr} translationTr={occ.translationTr || rootInfo.meaningTr} />
                           </p>
                         ) : (
                           <p className="text-soft-400 italic text-sm">Meal bulunamadı.</p>

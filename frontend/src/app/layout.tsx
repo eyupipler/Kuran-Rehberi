@@ -11,7 +11,7 @@ const siteUrl = 'https://kuranrehberi.com';
 
 export const metadata: Metadata = {
   title: {
-    default: 'Kuran Rehberi | Yeni Özellikler Eklenecektir - Demo',
+    default: 'Kuran Rehberi | Kuran-ı Kerim Araştırma Platformu',
     template: '%s | Kuran Rehberi'
   },
   description: 'Kuran-ı Kerim araştırma platformu. 114 sure, 6236 ayet, 12+ Türkçe ve İngilizce meal, kelime kökü analizi, morfolojik arama ve ayet karşılaştırma özellikleri. Ücretsiz Kuran meali okuma ve araştırma.',
