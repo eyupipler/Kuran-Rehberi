@@ -71,37 +71,73 @@ interface RootOccurrence {
 }
 
 /* ─── Türkçe köke göre meal vurgulama ─────────────────────────── */
+const TR_CHARS_VERSE = 'a-züğışçöâîûA-ZÜĞIŞÇÖÂÎÛ';
+
 function turkishStemVerse(word: string): string {
   const lower = word.toLowerCase()
     .replace(/İ/g, 'i').replace(/I/g, 'ı')
     .replace(/Ğ/g, 'ğ').replace(/Ş/g, 'ş')
     .replace(/Ç/g, 'ç').replace(/Ö/g, 'ö').replace(/Ü/g, 'ü');
-  const suffixes = ['lerin', 'larin', 'lerın', 'lerde', 'lardan', 'lerden',
-    'ların', 'lerin', 'lar', 'ler', 'den', 'dan', 'ten', 'tan', 'de', 'da', 'te', 'ta',
-    'nin', 'nın', 'nun', 'nün', 'in', 'ın', 'un', 'ün', 'yi', 'yı', 'yu', 'yü',
-    'ye', 'ya', 'nde', 'nda', 'nden', 'ndan'];
+  // Fiil ve isim ekleri — uzundan kısaya sıralı
+  const suffixes = [
+    'mayacağını', 'meyeceğini', 'ınmayacağı', 'inmeyeceği',
+    'mayacağı', 'meyeceği', 'mayacak', 'meyecek',
+    'acağını', 'eceğini', 'acağı', 'eceği', 'acak', 'ecek',
+    'ıyor', 'iyor', 'uyor', 'üyor',
+    'mış', 'miş', 'muş', 'müş',
+    'mak', 'mek', 'arak', 'erek',
+    'mez', 'maz',
+    'tı', 'ti', 'tu', 'tü', 'dı', 'di', 'du', 'dü',
+    'an', 'en', 'ar', 'er', 'ır', 'ir', 'ur', 'ür',
+    'ıp', 'ip', 'up', 'üp',
+    'lerin', 'ların', 'lerde', 'lardan', 'lerden',
+    'lar', 'ler', 'nın', 'nin', 'nun', 'nün',
+    'den', 'dan', 'ten', 'tan', 'de', 'da', 'te', 'ta',
+    'nde', 'nda', 'nden', 'ndan',
+    'in', 'ın', 'un', 'ün', 'yi', 'yı', 'yu', 'yü', 'ye', 'ya',
+  ];
   let stem = lower;
-  for (const suf of suffixes) {
-    if (stem.length > suf.length + 2 && stem.endsWith(suf)) {
-      stem = stem.slice(0, stem.length - suf.length);
-      break;
+  for (let pass = 0; pass < 3; pass++) {
+    let changed = false;
+    for (const suf of suffixes) {
+      if (stem.length > suf.length + 2 && stem.endsWith(suf)) {
+        stem = stem.slice(0, stem.length - suf.length);
+        changed = true;
+        break;
+      }
     }
+    if (!changed) break;
   }
-  return stem.length > 4 ? stem.slice(0, 5) : stem;
+  return stem.length > 4 ? stem.slice(0, 4) : stem;
 }
 
 function MealWithHighlightVerse({ meal, translationTr }: { meal: string; translationTr: string | null }) {
   if (!meal || !translationTr) return <>{meal}</>;
-  const terms = translationTr.split(/[,،\/;]+/).map(t => t.trim()).filter(t => t.length > 2);
+  const terms = translationTr.split(/[,،\/; ]+/).map(t => t.trim()).filter(t => t.length > 1);
   for (const term of terms) {
     try {
+      const termLower = term.toLowerCase().replace(/İ/g, 'i').replace(/I/g, 'ı');
+      const mealLower = meal.toLowerCase().replace(/İ/g, 'i').replace(/I/g, 'ı');
+      // 1. Tam eşleşme dene
+      if (termLower.length >= 3 && mealLower.includes(termLower)) {
+        const idx = mealLower.indexOf(termLower);
+        return (
+          <>
+            {meal.slice(0, idx)}
+            <mark className="bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300 rounded px-0.5 not-italic font-medium">
+              {meal.slice(idx, idx + term.length)}
+            </mark>
+            {meal.slice(idx + term.length)}
+          </>
+        );
+      }
+      // 2. Kök eşleşmesi dene
       const stem = turkishStemVerse(term);
       if (stem.length < 3) continue;
       const escaped = stem.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const trChars = 'a-züğışçöâîûA-ZÜĞIŞÇÖÂÎÛa-zğışçöüâîû';
-      const regex = new RegExp(`(${escaped}[${trChars}]*)`, 'gi');
-      if (regex.test(meal)) {
-        const parts = meal.split(new RegExp(`(${escaped}[${trChars}]*)`, 'gi'));
+      const pattern = new RegExp(`(${escaped}[${TR_CHARS_VERSE}]*)`, 'gi');
+      if (pattern.test(meal)) {
+        const parts = meal.split(new RegExp(`(${escaped}[${TR_CHARS_VERSE}]*)`, 'gi'));
         if (parts.length > 1) {
           return (
             <>
@@ -154,8 +190,9 @@ function CompareVersePanel({
   const trList = translations.filter((t) => t.language === 'tr');
 
   // Find translationTr for the selected root from this panel's words
-  const selectedWordTr = words && selectedRoot
-    ? words.find(w => w.root === selectedRoot)?.translationTr ?? null
+  const selectedWord = words && selectedRoot ? words.find(w => w.root === selectedRoot) : null;
+  const selectedWordTr = selectedWord
+    ? (selectedWord.translationTr || selectedWord.rootMeaningTr || null)
     : null;
 
   // Render Arabic text with root highlights if word data is available
@@ -876,7 +913,11 @@ export default function VersePage() {
                     {t.language === 'tr' ? 'Türkçe' : t.language === 'en' ? 'İngilizce' : t.language === 'ar' ? 'Arapça' : t.language}
                   </span>
                 </div>
-                <p className="prose-text text-soft-600 dark:text-gray-300 leading-relaxed">{t.text}</p>
+                <p className="prose-text text-soft-600 dark:text-gray-300 leading-relaxed">
+                  {t.language === 'tr' && selectedWord
+                    ? <MealWithHighlightVerse meal={t.text} translationTr={selectedWord.translationTr || selectedWord.rootMeaningTr || null} />
+                    : t.text}
+                </p>
               </div>
             ))}
           </div>

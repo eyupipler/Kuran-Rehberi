@@ -124,24 +124,43 @@ function ArabicWithHighlight({ text, targetWord, wordPosition }: { text: string;
   );
 }
 
-// Türkçe ses değişimleri için kök normalize et
+// Türkçe ses değişimleri için kök normalize et — fiil ve isim ekleri
 function turkishStem(word: string): string {
   const lower = word.toLowerCase()
     .replace(/İ/g, 'i').replace(/I/g, 'ı')
     .replace(/Ğ/g, 'ğ').replace(/Ş/g, 'ş')
     .replace(/Ç/g, 'ç').replace(/Ö/g, 'ö').replace(/Ü/g, 'ü');
-  const suffixes = ['lerin', 'larin', 'lerde', 'lardan', 'lerden',
-    'ların', 'lar', 'ler', 'den', 'dan', 'ten', 'tan', 'de', 'da', 'te', 'ta',
-    'nin', 'nın', 'nun', 'nün', 'in', 'ın', 'un', 'ün', 'yi', 'yı', 'yu', 'yü',
-    'ye', 'ya', 'nde', 'nda', 'nden', 'ndan'];
+  // Fiil ve isim ekleri — uzundan kısaya sıralı
+  const suffixes = [
+    'mayacağını', 'meyeceğini', 'ınmayacağı', 'inmeyeceği',
+    'mayacağı', 'meyeceği', 'mayacak', 'meyecek',
+    'acağını', 'eceğini', 'acağı', 'eceği', 'acak', 'ecek',
+    'ıyor', 'iyor', 'uyor', 'üyor',
+    'mış', 'miş', 'muş', 'müş',
+    'mak', 'mek', 'arak', 'erek',
+    'mez', 'maz',
+    'tı', 'ti', 'tu', 'tü', 'dı', 'di', 'du', 'dü',
+    'an', 'en', 'ar', 'er', 'ır', 'ir', 'ur', 'ür',
+    'ıp', 'ip', 'up', 'üp',
+    'lerin', 'ların', 'lerde', 'lardan', 'lerden',
+    'lar', 'ler', 'nın', 'nin', 'nun', 'nün',
+    'den', 'dan', 'ten', 'tan', 'de', 'da', 'te', 'ta',
+    'nde', 'nda', 'nden', 'ndan',
+    'in', 'ın', 'un', 'ün', 'yi', 'yı', 'yu', 'yü', 'ye', 'ya',
+  ];
   let stem = lower;
-  for (const suf of suffixes) {
-    if (stem.length > suf.length + 2 && stem.endsWith(suf)) {
-      stem = stem.slice(0, stem.length - suf.length);
-      break;
+  for (let pass = 0; pass < 3; pass++) {
+    let changed = false;
+    for (const suf of suffixes) {
+      if (stem.length > suf.length + 2 && stem.endsWith(suf)) {
+        stem = stem.slice(0, stem.length - suf.length);
+        changed = true;
+        break;
+      }
     }
+    if (!changed) break;
   }
-  return stem.length > 5 ? stem.slice(0, 5) : stem;
+  return stem.length > 4 ? stem.slice(0, 4) : stem;
 }
 
 const TR_CHARS = 'a-züğışçöâîûA-ZÜĞIŞÇÖÂÎÛ';
@@ -151,16 +170,16 @@ function MealWithHighlight({ meal, translationTr }: { meal: string; translationT
   if (!meal || !translationTr) return <>{meal}</>;
 
   const terms = translationTr
-    .split(/[,،\/;]+/)
+    .split(/[,،\/; ]+/)
     .map(t => t.trim())
-    .filter(t => t.length > 2);
+    .filter(t => t.length > 1);
 
   for (const term of terms) {
     try {
       // 1. Try exact case-insensitive substring first (no stemming)
       const termLower = term.toLowerCase().replace(/İ/g, 'i').replace(/I/g, 'ı');
       const mealLower = meal.toLowerCase().replace(/İ/g, 'i').replace(/I/g, 'ı');
-      if (termLower.length >= 4 && mealLower.includes(termLower)) {
+      if (termLower.length >= 3 && mealLower.includes(termLower)) {
         const idx = mealLower.indexOf(termLower);
         return (
           <>
