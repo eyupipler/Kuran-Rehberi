@@ -1,4 +1,34 @@
 import { ReactNode } from 'react';
+import type { Metadata } from 'next';
+
+const surahNames: string[] = [
+  'Fatiha', 'Bakara', 'Âl-i İmrân', 'Nisâ', 'Mâide', 'En\'âm', 'A\'râf', 'Enfâl', 'Tevbe', 'Yûnus',
+  'Hûd', 'Yûsuf', 'Ra\'d', 'İbrâhîm', 'Hicr', 'Nahl', 'İsrâ', 'Kehf', 'Meryem', 'Tâhâ',
+  'Enbiyâ', 'Hac', 'Mü\'minûn', 'Nûr', 'Furkân', 'Şuarâ', 'Neml', 'Kasas', 'Ankebût', 'Rûm',
+  'Lokmân', 'Secde', 'Ahzâb', 'Sebe\'', 'Fâtır', 'Yâsîn', 'Sâffât', 'Sâd', 'Zümer', 'Mü\'min',
+  'Fussilet', 'Şûrâ', 'Zuhruf', 'Duhân', 'Câsiye', 'Ahkâf', 'Muhammed', 'Fetih', 'Hucurât', 'Kâf',
+  'Zâriyât', 'Tûr', 'Necm', 'Kamer', 'Rahmân', 'Vâkıa', 'Hadîd', 'Mücâdele', 'Haşr', 'Mümtehine',
+  'Sâff', 'Cumua', 'Münâfikûn', 'Teğâbün', 'Talâk', 'Tahrîm', 'Mülk', 'Kalem', 'Hâkka', 'Meâric',
+  'Nûh', 'Cin', 'Müzzemmil', 'Müddessir', 'Kıyâme', 'İnsân', 'Mürselât', 'Nebe\'', 'Nâziât', 'Abese',
+  'Tekvîr', 'İnfitâr', 'Mutaffifîn', 'İnşikâk', 'Burûc', 'Târık', 'A\'lâ', 'Ğâşiye', 'Fecr', 'Beled',
+  'Şems', 'Leyl', 'Duhâ', 'İnşirâh', 'Tîn', 'Alak', 'Kadr', 'Beyyine', 'Zilzâl', 'Âdiyât',
+  'Kâria', 'Tekâsür', 'Asr', 'Hümeze', 'Fîl', 'Kureyş', 'Mâûn', 'Kevser', 'Kâfirûn', 'Nasr',
+  'Tebbet', 'İhlâs', 'Felak', 'Nâs',
+];
+
+export async function generateMetadata({ params }: { params: { surahId: string; verseNumber: string } }): Promise<Metadata> {
+  const surahId = parseInt(params.surahId);
+  const verseNumber = parseInt(params.verseNumber);
+  const name = surahNames[surahId - 1] || `Sure ${surahId}`;
+  return {
+    title: `${name} ${verseNumber}. Ayet`,
+    description: `Kuran-ı Kerim ${name} Suresi ${verseNumber}. Ayet — Türkçe meal, Arapça metin, kelime kökü analizi ve karşılaştırmalı çeviri.`,
+    openGraph: {
+      title: `${name} ${verseNumber}. Ayet | Kuran Rehberi`,
+      description: `${name} ${verseNumber}. Ayet Türkçe meali, kelime analizi ve morfolojik inceleme.`,
+    },
+  };
+}
 
 // Her sure için ayet sayıları (Kuran'daki 114 sure)
 const surahVerseCounts = [
