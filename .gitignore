@@ -41,3 +41,6 @@ Thumbs.db
 
 # Cache
 
+out.zip
+frontend/out.zip
+frontend/out/
