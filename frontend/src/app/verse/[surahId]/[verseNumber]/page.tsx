@@ -133,23 +133,43 @@ function MealWithHighlightVerse({ meal, translationTr }: { meal: string; transla
       }
       // 2. Kök eşleşmesi dene
       const stem = turkishStemVerse(term);
-      if (stem.length < 3) continue;
-      const escaped = stem.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const pattern = new RegExp(`(${escaped}[${TR_CHARS_VERSE}]*)`, 'gi');
-      if (pattern.test(meal)) {
-        const parts = meal.split(new RegExp(`(${escaped}[${TR_CHARS_VERSE}]*)`, 'gi'));
-        if (parts.length > 1) {
-          return (
-            <>
-              {parts.map((part, i) =>
-                i % 2 === 1 ? (
-                  <mark key={i} className="bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300 rounded px-0.5 not-italic font-medium">
-                    {part}
-                  </mark>
-                ) : part
-              )}
-            </>
-          );
+      const tryHL = (s: string) => {
+        const esc = s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const pat = new RegExp(`(?<![${TR_CHARS_VERSE}])(${esc}[${TR_CHARS_VERSE}]*)`, 'gi');
+        if (!pat.test(meal)) return null;
+        const parts = meal.split(new RegExp(`(?<![${TR_CHARS_VERSE}])(${esc}[${TR_CHARS_VERSE}]*)`, 'gi'));
+        if (parts.length <= 1) return null;
+        return (
+          <>
+            {parts.map((part, i) =>
+              i % 2 === 1 ? (
+                <mark key={i} className="bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300 rounded px-0.5 not-italic font-medium">
+                  {part}
+                </mark>
+              ) : part
+            )}
+          </>
+        );
+      };
+      if (stem.length >= 3) {
+        const result = tryHL(stem);
+        if (result) return result;
+      }
+      // -mak/-mek fiilleri için çeşitli gövde formlarını dene
+      {
+        const tl = term.toLowerCase().replace(/İ/g, 'i').replace(/I/g, 'ı');
+        if (tl.endsWith('mak') || tl.endsWith('mek')) {
+          const rootStem = tl.slice(0, -3);
+          if (rootStem.length >= 2) {
+            const isBack = tl.endsWith('mak');
+            const forms = isBack
+              ? [rootStem + 'ın', rootStem + 'dı', rootStem + 'an', rootStem + 'ır', rootStem + 'mış', rootStem + 'ıp']
+              : [rootStem + 'il', rootStem + 'di', rootStem + 'en', rootStem + 'ir', rootStem + 'miş', rootStem + 'ip'];
+            for (const f of forms) {
+              const r = tryHL(f);
+              if (r) return r;
+            }
+          }
         }
       }
     } catch { continue; }

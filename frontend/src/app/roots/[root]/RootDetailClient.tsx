@@ -193,23 +193,50 @@ function MealWithHighlight({ meal, translationTr }: { meal: string; translationT
       }
       // 2. Try stem match
       const stem = turkishStem(term);
-      if (stem.length < 3) continue;
-      const escaped = stem.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const pattern = new RegExp(`(${escaped}[${TR_CHARS}]*)`, 'gi');
-      if (pattern.test(meal)) {
-        const parts = meal.split(new RegExp(`(${escaped}[${TR_CHARS}]*)`, 'gi'));
-        if (parts.length > 1) {
-          return (
-            <>
-              {parts.map((part, i) =>
-                i % 2 === 1 ? (
-                  <mark key={i} className="bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300 rounded px-0.5 not-italic font-medium">
-                    {part}
-                  </mark>
-                ) : part
-              )}
-            </>
-          );
+      const tryHighlight = (s: string) => {
+        const esc = s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        // Kelime sınırı: öncesinde Türkçe harf olmasın (yalanladılar içindeki "alan"ı yakalamasın)
+        const pat = new RegExp(`(?<![${TR_CHARS}])(${esc}[${TR_CHARS}]*)`, 'gi');
+        if (!pat.test(meal)) return null;
+        const parts = meal.split(new RegExp(`(?<![${TR_CHARS}])(${esc}[${TR_CHARS}]*)`, 'gi'));
+        if (parts.length <= 1) return null;
+        return (
+          <>
+            {parts.map((part, i) =>
+              i % 2 === 1 ? (
+                <mark key={i} className="bg-primary-100 dark:bg-primary-900/40 text-primary-700 dark:text-primary-300 rounded px-0.5 not-italic font-medium">
+                  {part}
+                </mark>
+              ) : part
+            )}
+          </>
+        );
+      };
+      if (stem.length >= 3) {
+        const result = tryHighlight(stem);
+        if (result) return result;
+      }
+      // -mak/-mek fiilleri için çeşitli gövde formlarını dene (stem uzunluğundan bağımsız)
+      // Örn: "almak" → stem="alma" olur ama meal'de "alınmayacağı", "aldınız", "alan" olabilir
+      {
+        const tl = term.toLowerCase().replace(/İ/g, 'i').replace(/I/g, 'ı');
+        if (tl.endsWith('mak') || tl.endsWith('mek')) {
+          const rootStem = tl.slice(0, -3);
+          if (rootStem.length >= 2) {
+            const isBack = tl.endsWith('mak');
+            // Pasif: al→alın, in→inil
+            // Aorist: al→alır, in→inir
+            // Geçmiş: al→aldı, in→indi
+            // Participle: al→alan, in→inen / al→alın (aynı pasifle)
+            // Miş-li geçmiş: al→almış, in→inmiş
+            const forms = isBack
+              ? [rootStem + 'ın', rootStem + 'dı', rootStem + 'an', rootStem + 'ır', rootStem + 'mış', rootStem + 'ıp']
+              : [rootStem + 'il', rootStem + 'di', rootStem + 'en', rootStem + 'ir', rootStem + 'miş', rootStem + 'ip'];
+            for (const f of forms) {
+              const r = tryHighlight(f);
+              if (r) return r;
+            }
+          }
         }
       }
     } catch { continue; }
@@ -484,7 +511,7 @@ export default function RootDetailClient({ rootParam }: Props) {
                     </span>
                     <p className="text-sm text-soft-600 dark:text-gray-300 leading-relaxed flex-1">
                       {occ.verseMealTr
-                        ? <MealWithHighlight meal={occ.verseMealTr} translationTr={occ.translationTr || rootInfo.meaningTr} />
+                        ? <MealWithHighlight meal={occ.verseMealTr} translationTr={[occ.translationTr, rootInfo.meaningTr].filter(Boolean).join(', ')} />
                         : '-'}
                     </p>
                   </div>
@@ -525,7 +552,7 @@ export default function RootDetailClient({ rootParam }: Props) {
                       <div className="text-left font-serif">
                         {occ.verseMealTr ? (
                           <p className="prose-text text-soft-700 dark:text-gray-300 leading-relaxed">
-                            <MealWithHighlight meal={occ.verseMealTr} translationTr={occ.translationTr || rootInfo.meaningTr} />
+                            <MealWithHighlight meal={occ.verseMealTr} translationTr={[occ.translationTr, rootInfo.meaningTr].filter(Boolean).join(', ')} />
                           </p>
                         ) : (
                           <p className="text-soft-400 italic text-sm">Meal bulunamadı.</p>
