@@ -57,6 +57,18 @@ RewriteRule ^ /index.html [L]
   ExpiresByType application/font-woff2 "access plus 1 year"
 </IfModule>
 
+# Service worker ve manifest surekli guncel kalmali.
+# Aksi halde yukaridaki 1 yillik JS kurali yeni surumun yayilmasini geciktirir.
+<FilesMatch "^(sw\.js|manifest\.json|offline\.html)$">
+  <IfModule mod_headers.c>
+    Header set Cache-Control "no-cache, must-revalidate"
+  </IfModule>
+  <IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresDefault "access plus 0 seconds"
+  </IfModule>
+</FilesMatch>
+
 # Gzip sikistirma
 <IfModule mod_deflate.c>
   AddOutputFilterByType DEFLATE text/html text/css application/javascript application/json image/svg+xml text/plain

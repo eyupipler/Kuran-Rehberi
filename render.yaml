@@ -7,4 +7,12 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
+      # CORS izin listesi — frontend'in servis edildigi origin(ler).
+      - key: ALLOWED_ORIGINS
+        value: https://kuranrehberi.com,https://www.kuranrehberi.com
+      # Frontend derlemesine gomulen adresler
+      - key: NEXT_PUBLIC_SITE_URL
+        value: https://kuranrehberi.com
+      - key: NEXT_PUBLIC_API_BASE
+        value: https://kuran-rehberi.onrender.com/api
     plan: free
