@@ -1,259 +1,132 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { API_BASE } from '@/config';
+import { ErrorState, LoadingState, SectionLabel, SegmentedControl } from '@/components/ui';
+import { GridIcon, ListIcon } from '@/components/ui/icons';
 import { useSettings } from '@/context/SettingsContext';
+import { DailyVerse } from '@/features/home/DailyVerse';
+import { ContinueReading, RecentVerses } from '@/features/home/ReadingHistory';
+import {
+  SurahCards,
+  SurahMobileList,
+  SurahTable,
+  useSortedSurahs,
+} from '@/features/quran/SurahList';
+import { useSurahs } from '@/features/quran/useSurahs';
+import { GlobalSearchBox } from '@/features/search/GlobalSearchBox';
 
-interface Surah {
-  id: number;
-  name: string;
-  arabicName: string;
-  englishName: string;
-  totalVerses: number;
-  revelationType: 'Mekki' | 'Medeni';
-  revelationOrder: number;
-}
+const QUICK_LINKS = [
+  { href: '/surahs', label: 'Sureleri gör' },
+  { href: '/roots', label: 'Kelime kökleri' },
+  { href: '/search', label: 'Mealde ara' },
+  { href: '/notes', label: 'Notlarım' },
+];
 
-interface DailyVerse {
-  surahId: number;
-  surahName: string;
-  verseNumber: number;
-  text: string;
-  translatorName: string;
-}
+const STATS = [
+  { value: '114', label: 'Sure' },
+  { value: '6.236', label: 'Ayet' },
+  { value: '43', label: 'Meal' },
+  { value: '1.658', label: 'Kök' },
+];
 
-type SortKey = 'name' | 'id' | 'revelation' | 'verses';
-type SortDir = 'asc' | 'desc';
+export default function HomePage() {
+  const { surahs, loading, error, reload } = useSurahs();
+  const { settings, update } = useSettings();
+  const { sorted, sortKey, direction, toggleSort } = useSortedSurahs(surahs);
 
-function SortIcon({ active, dir }: { active: boolean; dir: SortDir }) {
-  if (!active) {
-    return (
-      <span className="ml-1 text-soft-300 dark:text-gray-600 text-xs select-none">⇅</span>
-    );
-  }
   return (
-    <span className="ml-1 text-primary-500 dark:text-primary-400 text-xs select-none">
-      {dir === 'asc' ? '↑' : '↓'}
-    </span>
-  );
-}
-
-export default function Home() {
-  const [surahs, setSurahs] = useState<Surah[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
-  const [sortKey, setSortKey] = useState<SortKey>('id');
-  const [sortDir, setSortDir] = useState<SortDir>('asc');
-  const [dailyVerse, setDailyVerse] = useState<DailyVerse | null>(null);
-  const { settings } = useSettings();
-
-  useEffect(() => {
-    fetch(`${API_BASE}/surahs`)
-      .then((res) => { if (!res.ok) throw new Error('API hatası'); return res.json(); })
-      .then((data) => { setSurahs(data); setLoading(false); })
-      .catch((err) => { console.error('Sureler yüklenemedi:', err); setError(true); setLoading(false); });
-  }, []);
-
-  // Günün ayetini yükle (surahs yüklendikten sonra)
-  useEffect(() => {
-    if (surahs.length === 0) return;
-    const dayNum = Math.floor(Date.now() / 86400000);
-    const surah = surahs[dayNum % surahs.length];
-    const verseNum = (dayNum % surah.totalVerses) + 1;
-    const translator = settings.defaultTranslator || 'tr.diyanet';
-    fetch(`${API_BASE}/surahs/${surah.id}/verses?translator=${translator}`)
-      .then(r => r.json())
-      .then(data => {
-        const verse = data.verses?.find((v: { verseNumber: number }) => v.verseNumber === verseNum)
-          || data.verses?.[0];
-        if (verse?.translation) {
-          setDailyVerse({
-            surahId: surah.id,
-            surahName: surah.name,
-            verseNumber: verse.verseNumber,
-            text: verse.translation,
-            translatorName: verse.translatorName || '',
-          });
-        }
-      })
-      .catch(() => {});
-  }, [surahs, settings.defaultTranslator]);
-
-  function handleSort(key: SortKey) {
-    if (sortKey === key) {
-      setSortDir(d => d === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortKey(key);
-      setSortDir('asc');
-    }
-  }
-
-  const sortedSurahs = [...surahs].sort((a, b) => {
-    let cmp = 0;
-    if (sortKey === 'name') cmp = a.name.localeCompare(b.name, 'tr');
-    else if (sortKey === 'id') cmp = a.id - b.id;
-    else if (sortKey === 'revelation') cmp = a.revelationOrder - b.revelationOrder;
-    else if (sortKey === 'verses') cmp = a.totalVerses - b.totalVerses;
-    return sortDir === 'asc' ? cmp : -cmp;
-  });
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[50vh]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[50vh] gap-4 text-center px-4">
-        <div className="text-4xl">⚠️</div>
-        <h2 className="text-lg font-semibold text-soft-700 dark:text-gray-300">Sunucuya bağlanılamadı</h2>
-        <p className="text-sm text-soft-500 dark:text-gray-400 max-w-sm">
-          Site ilk açılışta biraz geç yanıt verebilir. Lütfen sayfayı yenileyin.
+    <div className="mx-auto max-w-5xl">
+      {/* Başlık ve arama */}
+      <section className="border-b border-line pb-10">
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-accent">
+          Kuran Rehberi
         </p>
-        <button
-          onClick={() => { setError(false); setLoading(true); fetch(`${API_BASE}/surahs`).then(r => r.json()).then(d => { setSurahs(d); setLoading(false); }).catch(() => { setError(true); setLoading(false); }); }}
-          className="px-4 py-2 bg-primary-600 text-white rounded-lg text-sm hover:bg-primary-700 transition-colors"
-        >
-          Tekrar Dene
-        </button>
-      </div>
-    );
-  }
-
-  const thBase = 'px-4 py-3 text-xs font-semibold uppercase tracking-wide whitespace-nowrap cursor-pointer select-none transition-colors hover:text-primary-600 dark:hover:text-primary-400';
-  const thActive = 'text-primary-600 dark:text-primary-400';
-  const thInactive = 'text-soft-500 dark:text-gray-400';
-
-  return (
-    <div>
-      {/* Günün Ayeti */}
-      {dailyVerse && (
-        <Link href={`/verse/${dailyVerse.surahId}/${dailyVerse.verseNumber}`}>
-          <div className="mb-7 rounded-xl border border-primary-700/40 bg-gradient-to-br from-primary-900/30 to-primary-800/10 p-5 hover:border-primary-600/60 transition-all duration-200 group cursor-pointer">
-            <div className="flex items-center gap-2 mb-3">
-              <span className="text-xs font-bold uppercase tracking-widest text-primary-400">Günün Ayeti</span>
-              <span className="flex-1 h-px bg-primary-700/30"></span>
-              <span className="text-xs text-soft-500 dark:text-gray-500">
-                {dailyVerse.surahName} Suresi · {dailyVerse.verseNumber}. Ayet
-              </span>
-            </div>
-            <p className="text-soft-200 dark:text-gray-200 leading-relaxed text-sm sm:text-base prose-text group-hover:text-white transition-colors">
-              {dailyVerse.text}
-            </p>
-            {dailyVerse.translatorName && (
-              <p className="text-xs text-soft-500 dark:text-gray-500 mt-2">{dailyVerse.translatorName}</p>
-            )}
-          </div>
-        </Link>
-      )}
-
-      {/* Başlık */}
-      <div className="mb-6">
-        <h1 className="text-2xl sm:text-3xl font-semibold text-soft-800 dark:text-white mb-1">
-          Kuran-ı Kerim
+        <h1 className="mt-3 max-w-2xl text-3xl font-semibold leading-[1.15] tracking-tight text-ink sm:text-5xl">
+          Kur&apos;an-ı Kerim&apos;i kelime kelime araştırın
         </h1>
-        <p className="text-soft-500 dark:text-gray-400 text-sm">
-          114 sure, 6236 ayet — Kelime kökü analizi ve çoklu çeviri desteği
+        <p className="mt-4 max-w-xl text-base leading-relaxed text-ink-muted">
+          Çoklu meal karşılaştırması, kelime kökü analizi ve morfolojik arama.
         </p>
-      </div>
 
-      {/* Masaüstü tablo */}
-      <div className="hidden sm:block overflow-x-auto rounded-xl border border-soft-200 dark:border-gray-700">
-        <table className="w-full border-collapse">
-          <thead>
-            <tr className="bg-soft-50 dark:bg-gray-800 border-b border-soft-200 dark:border-gray-700">
-              <th
-                className={`text-left ${thBase} ${sortKey === 'name' ? thActive : thInactive} w-full`}
-                onClick={() => handleSort('name')}
-              >
-                Sure İsmi
-                <SortIcon active={sortKey === 'name'} dir={sortDir} />
-              </th>
-              <th
-                className={`text-center ${thBase} ${sortKey === 'id' ? thActive : thInactive}`}
-                onClick={() => handleSort('id')}
-              >
-                Kitap Sırası
-                <SortIcon active={sortKey === 'id'} dir={sortDir} />
-              </th>
-              <th
-                className={`text-center ${thBase} ${sortKey === 'revelation' ? thActive : thInactive}`}
-                onClick={() => handleSort('revelation')}
-              >
-                İniş Sırası
-                <SortIcon active={sortKey === 'revelation'} dir={sortDir} />
-              </th>
-              <th
-                className={`text-center ${thBase} ${sortKey === 'verses' ? thActive : thInactive}`}
-                onClick={() => handleSort('verses')}
-              >
-                Ayet Sayısı
-                <SortIcon active={sortKey === 'verses'} dir={sortDir} />
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {sortedSurahs.map((surah, i) => (
-              <tr
-                key={surah.id}
-                className={[
-                  'border-b border-soft-100 dark:border-gray-700/50',
-                  'hover:bg-primary-50/60 dark:hover:bg-gray-700/40 transition-colors',
-                  i % 2 === 0 ? 'bg-white dark:bg-gray-800' : 'bg-soft-50/40 dark:bg-gray-800/60',
-                ].join(' ')}
-              >
-                <td className="px-5 py-3">
-                  <Link href={`/surah/${surah.id}`} className="flex items-center gap-3 group">
-                    <span className="text-soft-400 dark:text-gray-500 text-xs w-5 text-right flex-shrink-0">
-                      {surah.id}
-                    </span>
-                    <div>
-                      <span className="font-medium text-primary-600 dark:text-primary-400 group-hover:text-primary-700 text-sm">
-                        {surah.name} Suresi
-                      </span>
-                      <span className="block text-xs text-soft-400 dark:text-gray-500">
-                        {surah.englishName}
-                      </span>
-                    </div>
-                  </Link>
-                </td>
-                <td className="text-center px-4 py-3 text-sm text-soft-600 dark:text-gray-300">
-                  {surah.id}
-                </td>
-                <td className="text-center px-4 py-3 text-sm text-soft-600 dark:text-gray-300">
-                  {surah.revelationOrder}
-                </td>
-                <td className="text-center px-4 py-3 text-sm text-soft-600 dark:text-gray-300">
-                  {surah.totalVerses}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+        <div className="mt-7 max-w-2xl">
+          <GlobalSearchBox />
+        </div>
 
-      {/* Mobil liste */}
-      <div className="sm:hidden -mx-4 divide-y divide-soft-100 dark:divide-gray-700 border-t border-soft-100 dark:border-gray-700">
-        {sortedSurahs.map((surah) => (
-          <Link
-            key={surah.id}
-            href={`/surah/${surah.id}`}
-            className="flex items-center gap-3 px-4 py-3 hover:bg-primary-50 dark:hover:bg-gray-700 transition-colors"
-          >
-            <span className="verse-number flex-shrink-0">{surah.id}</span>
-            <div className="flex-1 min-w-0">
-              <span className="font-medium text-soft-800 dark:text-white text-sm">{surah.name}</span>
-              <div className="mt-0.5">
-                <span className="text-xs text-soft-400">{surah.totalVerses} ayet</span>
-              </div>
-            </div>
-          </Link>
+        <nav aria-label="Hızlı erişim" className="mt-4 flex flex-wrap gap-x-5 gap-y-2">
+          {QUICK_LINKS.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              className="text-sm font-medium text-accent underline-offset-4 hover:underline"
+            >
+              {link.label} →
+            </Link>
+          ))}
+        </nav>
+      </section>
+
+      {/* İstatistik şeridi */}
+      <dl className="grid grid-cols-2 divide-line border-b border-line sm:grid-cols-4 sm:divide-x">
+        {STATS.map((stat) => (
+          <div key={stat.label} className="px-1 py-6 sm:px-6 sm:first:pl-0">
+            <dt className="text-xs uppercase tracking-wider text-ink-faint">{stat.label}</dt>
+            <dd className="mt-1 text-2xl font-semibold tabular-nums text-ink">{stat.value}</dd>
+          </div>
         ))}
+      </dl>
+
+      <div className="grid divide-y divide-line border-b border-line lg:grid-cols-2 lg:divide-x lg:divide-y-0">
+        <ContinueReading />
+        <DailyVerse />
       </div>
+
+      <RecentVerses />
+
+      <section aria-labelledby="surah-list-heading" className="pt-10">
+        <div className="mb-5 flex items-end justify-between gap-3">
+          <div>
+            <span id="surah-list-heading">
+              <SectionLabel>Sureler</SectionLabel>
+            </span>
+            <p className="mt-1 text-sm text-ink-muted">Okumak istediğiniz sureyi seçin</p>
+          </div>
+          <div className="hidden sm:block">
+            <SegmentedControl
+              label="Sure listesi görünümü"
+              value={settings.surahListView}
+              onChange={(value) => update('surahListView', value)}
+              options={[
+                { value: 'table', label: <ListIcon className="h-4 w-4" />, title: 'Tablo görünümü' },
+                { value: 'card', label: <GridIcon className="h-4 w-4" />, title: 'Kart görünümü' },
+              ]}
+            />
+          </div>
+        </div>
+
+        {loading ? (
+          <LoadingState label="Sureler yükleniyor..." />
+        ) : error ? (
+          <ErrorState
+            message={error}
+            hint="Sunucu uykudaysa ilk istek biraz gecikebilir."
+            onRetry={reload}
+          />
+        ) : (
+          <>
+            {settings.surahListView === 'card' ? (
+              <SurahCards surahs={sorted} />
+            ) : (
+              <SurahTable
+                surahs={sorted}
+                sortKey={sortKey}
+                direction={direction}
+                onSort={toggleSort}
+              />
+            )}
+            <SurahMobileList surahs={sorted} />
+          </>
+        )}
+      </section>
     </div>
   );
 }

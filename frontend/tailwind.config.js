@@ -1,9 +1,14 @@
 /** @type {import('tailwindcss').Config} */
+
+// Renkler globals.css'teki CSS değişkenlerinden okunur; böylece açık/koyu tema
+// `dark:` varyantı tekrarlamadan tek sınıf adıyla çalışır.
+const token = (name) => `rgb(var(${name}) / <alpha-value>)`;
+
 module.exports = {
   darkMode: 'class',
   content: [
-    './src/pages/**/*.{js,ts,jsx,tsx,mdx}',
     './src/components/**/*.{js,ts,jsx,tsx,mdx}',
+    './src/features/**/*.{js,ts,jsx,tsx,mdx}',
     './src/app/**/*.{js,ts,jsx,tsx,mdx}',
   ],
   theme: {
@@ -13,49 +18,56 @@ module.exports = {
         sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
       },
       colors: {
-        // Daha yumuşak, pastel tonlarında yeşil palet
-        primary: {
-          50: '#f0f9f4',
-          100: '#e0f2e8',
-          200: '#c3e5d3',
-          300: '#98d4b5',
-          400: '#6bbf91',
-          500: '#48a872',
-          600: '#358a5b',
-          700: '#2d7049',
-          800: '#275a3c',
-          900: '#224a34',
+        canvas: token('--canvas'),
+        surface: {
+          DEFAULT: token('--surface'),
+          raised: token('--surface-raised'),
+          sunken: token('--surface-sunken'),
         },
-        // Yumuşak gri tonları
-        soft: {
-          50: '#fafafa',
-          100: '#f5f5f5',
-          200: '#eeeeee',
-          300: '#e0e0e0',
-          400: '#bdbdbd',
-          500: '#9e9e9e',
-          600: '#757575',
-          700: '#616161',
-          800: '#424242',
-          900: '#212121',
+        line: {
+          DEFAULT: token('--line'),
+          strong: token('--line-strong'),
         },
-        // Krem tonları (arka plan için)
-        cream: {
-          50: '#fefdfb',
-          100: '#fdfaf5',
-          200: '#faf5eb',
-          300: '#f5eddd',
-          400: '#ede1c9',
+        ink: {
+          DEFAULT: token('--ink'),
+          muted: token('--ink-muted'),
+          faint: token('--ink-faint'),
         },
+        accent: {
+          DEFAULT: token('--accent'),
+          hover: token('--accent-hover'),
+          soft: token('--accent-soft'),
+          ink: token('--accent-ink'),
+          contrast: token('--accent-contrast'),
+        },
+        marker: {
+          DEFAULT: token('--marker'),
+          ink: token('--marker-ink'),
+        },
+        danger: {
+          DEFAULT: token('--danger'),
+          soft: token('--danger-soft'),
+        },
+      },
+      // Keskin köşe dili: yarıçaplar neredeyse sıfır.
+      borderRadius: {
+        none: '0',
+        sm: '1px',
+        DEFAULT: '2px',
+        md: '2px',
+        lg: '2px',
+        xl: '3px',
+        '2xl': '3px',
+        '3xl': '4px',
+        full: '9999px',
       },
       boxShadow: {
-        'soft': '0 2px 8px rgba(0, 0, 0, 0.06)',
-        'soft-md': '0 4px 12px rgba(0, 0, 0, 0.08)',
-        'soft-lg': '0 8px 24px rgba(0, 0, 0, 0.10)',
+        // Yalnızca üst üste binen katmanlarda kullanılır (modal, açılır liste).
+        overlay: '0 1px 2px rgb(13 22 38 / 0.06), 0 12px 32px -8px rgb(13 22 38 / 0.18)',
+        none: 'none',
       },
-      borderRadius: {
-        'xl': '1rem',
-        '2xl': '1.5rem',
+      maxWidth: {
+        reader: '42rem',
       },
     },
   },

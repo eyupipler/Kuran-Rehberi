@@ -1,73 +1,70 @@
 const express = require('express');
 const router = express.Router();
 const { getDatabase } = require('../db/database');
+const { HttpError, requireInt, optionalString } = require('../middleware/validate');
+
+const SURAH_COLUMNS = `
+  id, name, arabic_name as arabicName, english_name as englishName,
+  total_verses as totalVerses, revelation_type as revelationType,
+  revelation_order as revelationOrder
+`;
+
+function surahId(value) {
+  return requireInt(value, { min: 1, max: 114, field: 'sure numarası' });
+}
 
 router.get('/', (req, res) => {
-  try {
-    const db = getDatabase();
-    const surahs = db.prepare(`
-      SELECT id, name, arabic_name as arabicName, english_name as englishName,
-        total_verses as totalVerses, revelation_type as revelationType,
-        revelation_order as revelationOrder
-      FROM surahs ORDER BY id
-    `).all();
-    res.json(surahs);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  const db = getDatabase();
+  res.json(db.prepare(`SELECT ${SURAH_COLUMNS} FROM surahs ORDER BY id`).all());
 });
 
 router.get('/:id', (req, res) => {
-  try {
-    const db = getDatabase();
-    const surah = db.prepare(`
-      SELECT id, name, arabic_name as arabicName, english_name as englishName,
-        total_verses as totalVerses, revelation_type as revelationType,
-        revelation_order as revelationOrder
-      FROM surahs WHERE id = ?
-    `).get(parseInt(req.params.id));
-    
-    if (!surah) return res.status(404).json({ error: 'Sure bulunamadı' });
-    res.json(surah);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  const db = getDatabase();
+  const surah = db.prepare(`SELECT ${SURAH_COLUMNS} FROM surahs WHERE id = ?`).get(surahId(req.params.id));
+  if (!surah) throw new HttpError(404, 'Sure bulunamadı');
+  res.json(surah);
 });
 
 router.get('/:id/verses', (req, res) => {
-  try {
-    const db = getDatabase();
-    const { id } = req.params;
-    const { translator } = req.query;
+  const db = getDatabase();
+  const id = surahId(req.params.id);
+  const translatorCode = optionalString(req.query.translator, { max: 40 });
 
-    const surah = db.prepare('SELECT * FROM surahs WHERE id = ?').get(parseInt(id));
-    if (!surah) return res.status(404).json({ error: 'Sure bulunamadı' });
+  const surah = db.prepare(`SELECT ${SURAH_COLUMNS} FROM surahs WHERE id = ?`).get(id);
+  if (!surah) throw new HttpError(404, 'Sure bulunamadı');
 
-    const verses = db.prepare(`
-      SELECT id, verse_number as verseNumber, arabic_text as arabicText
-      FROM verses WHERE surah_id = ? ORDER BY verse_number
-    `).all(parseInt(id));
+  const verses = db
+    .prepare(
+      `SELECT id, verse_number as verseNumber, arabic_text as arabicText
+       FROM verses WHERE surah_id = ? ORDER BY verse_number`
+    )
+    .all(id);
+
+  if (translatorCode) {
+    const translator = db
+      .prepare('SELECT id, name FROM translators WHERE code = ?')
+      .get(translatorCode);
 
     if (translator) {
-      const translatorInfo = db.prepare('SELECT id, name FROM translators WHERE code = ?').get(translator);
-      if (translatorInfo) {
-        for (const verse of verses) {
-          const translation = db.prepare(
-            'SELECT text FROM translations WHERE verse_id = ? AND translator_id = ?'
-          ).get(verse.id, translatorInfo.id);
-          verse.translation = translation ? translation.text : null;
-          verse.translatorName = translatorInfo.name;
-        }
+      // Ayet başına ayrı sorgu yerine tek seferde tüm mealleri çek.
+      const rows = db
+        .prepare(
+          `SELECT tr.verse_id as verseId, tr.text
+           FROM translations tr
+           JOIN verses v ON v.id = tr.verse_id
+           WHERE v.surah_id = ? AND tr.translator_id = ?`
+        )
+        .all(id, translator.id);
+
+      const textByVerseId = new Map(rows.map((row) => [row.verseId, row.text]));
+      for (const verse of verses) {
+        verse.translation = textByVerseId.get(verse.id) ?? null;
+        verse.translatorName = translator.name;
       }
     }
-
-    res.json({
-      surah: { id: surah.id, name: surah.name, arabicName: surah.arabic_name, totalVerses: surah.total_verses },
-      verses
-    });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
   }
+
+  res.json({ surah, verses });
 });
 
 module.exports = router;

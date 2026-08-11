@@ -1,72 +1,114 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useCallback, useContext, useMemo } from 'react';
+import type { ReactNode } from 'react';
+import { STORAGE_KEYS, usePersistentState } from '@/lib/storage';
 
 export interface NoteItem {
-  id: string; // "surahId:verseNumber"
+  /** "surahId:verseNumber" — her ayet için tek not tutulur. */
+  id: string;
   surahId: number;
   verseNumber: number;
   surahName: string;
   arabicText: string;
+  title: string;
   content: string;
+  tags: string[];
+  createdAt: string;
   updatedAt: string;
 }
 
-interface NotesContextType {
+export type NoteDraft = Pick<
+  NoteItem,
+  'surahId' | 'verseNumber' | 'surahName' | 'arabicText' | 'title' | 'content' | 'tags'
+>;
+
+interface NotesContextValue {
   notes: NoteItem[];
+  allTags: string[];
   getNote: (surahId: number, verseNumber: number) => NoteItem | undefined;
-  saveNote: (data: Omit<NoteItem, 'id' | 'updatedAt'>) => void;
+  saveNote: (draft: NoteDraft) => void;
   deleteNote: (id: string) => void;
+  replaceNotes: (notes: NoteItem[]) => void;
 }
 
-const NotesContext = createContext<NotesContextType>({
+const NotesContext = createContext<NotesContextValue>({
   notes: [],
+  allTags: [],
   getNote: () => undefined,
   saveNote: () => {},
   deleteNote: () => {},
+  replaceNotes: () => {},
 });
 
+export function normalizeTag(raw: string): string {
+  return raw.trim().replace(/^#+/, '').toLocaleLowerCase('tr-TR');
+}
+
+// Eski sürümde not yalnızca içerikten oluşuyordu; eksik alanları tamamla.
+function migrate(note: Partial<NoteItem>): NoteItem {
+  const updatedAt = note.updatedAt || new Date().toISOString();
+  return {
+    id: note.id || `${note.surahId}:${note.verseNumber}`,
+    surahId: Number(note.surahId),
+    verseNumber: Number(note.verseNumber),
+    surahName: note.surahName || '',
+    arabicText: note.arabicText || '',
+    title: note.title || '',
+    content: note.content || '',
+    tags: Array.isArray(note.tags) ? note.tags : [],
+    createdAt: note.createdAt || updatedAt,
+    updatedAt,
+  };
+}
+
 export function NotesProvider({ children }: { children: ReactNode }) {
-  const [notes, setNotes] = useState<NoteItem[]>([]);
-  const [loaded, setLoaded] = useState(false);
+  const { value, setValue } = usePersistentState<NoteItem[]>(STORAGE_KEYS.notes, []);
 
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem('kuran-rehberi-notes');
-      if (saved) setNotes(JSON.parse(saved));
-    } catch {}
-    setLoaded(true);
-  }, []);
+  const notes = useMemo(() => value.map(migrate), [value]);
 
-  useEffect(() => {
-    if (loaded) {
-      localStorage.setItem('kuran-rehberi-notes', JSON.stringify(notes));
+  const allTags = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const note of notes) {
+      for (const tag of note.tags) counts.set(tag, (counts.get(tag) || 0) + 1);
     }
-  }, [notes, loaded]);
+    return [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([tag]) => tag);
+  }, [notes]);
 
-  const getNote = (surahId: number, verseNumber: number) =>
-    notes.find((n) => n.surahId === surahId && n.verseNumber === verseNumber);
+  const getNote = useCallback(
+    (surahId: number, verseNumber: number) =>
+      notes.find((n) => n.surahId === surahId && n.verseNumber === verseNumber),
+    [notes]
+  );
 
-  const saveNote = (data: Omit<NoteItem, 'id' | 'updatedAt'>) => {
-    const id = `${data.surahId}:${data.verseNumber}`;
-    const item: NoteItem = { ...data, id, updatedAt: new Date().toISOString() };
-    setNotes((prev) => {
-      const existing = prev.findIndex((n) => n.id === id);
-      if (existing >= 0) {
-        const updated = [...prev];
-        updated[existing] = item;
-        return updated;
-      }
-      return [...prev, item];
-    });
-  };
+  const saveNote = useCallback(
+    (draft: NoteDraft) => {
+      const id = `${draft.surahId}:${draft.verseNumber}`;
+      const now = new Date().toISOString();
+      setValue((prev) => {
+        const existing = prev.find((n) => n.id === id);
+        const item: NoteItem = {
+          ...draft,
+          id,
+          tags: [...new Set(draft.tags.map(normalizeTag).filter(Boolean))],
+          createdAt: existing?.createdAt || now,
+          updatedAt: now,
+        };
+        return existing ? prev.map((n) => (n.id === id ? item : n)) : [...prev, item];
+      });
+    },
+    [setValue]
+  );
 
-  const deleteNote = (id: string) => {
-    setNotes((prev) => prev.filter((n) => n.id !== id));
-  };
+  const deleteNote = useCallback(
+    (id: string) => setValue((prev) => prev.filter((n) => n.id !== id)),
+    [setValue]
+  );
+
+  const replaceNotes = useCallback((next: NoteItem[]) => setValue(next.map(migrate)), [setValue]);
 
   return (
-    <NotesContext.Provider value={{ notes, getNote, saveNote, deleteNote }}>
+    <NotesContext.Provider value={{ notes, allTags, getNote, saveNote, deleteNote, replaceNotes }}>
       {children}
     </NotesContext.Provider>
   );

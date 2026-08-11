@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Çevrimdışısınız | Kuran Rehberi</title>
+    <link rel="icon" type="image/png" href="/logo.png" />
+    <style>
+      :root {
+        --canvas: #faf9f5;
+        --surface: #ffffff;
+        --line: #e5e2d9;
+        --ink: #1c211f;
+        --ink-muted: #5a625e;
+        --accent: #117a54;
+        --accent-contrast: #ffffff;
+      }
+      html.dark {
+        --canvas: #141617;
+        --surface: #1b1e1f;
+        --line: #2f3435;
+        --ink: #dfe2e0;
+        --ink-muted: #a0a7a4;
+        --accent: #4fb386;
+        --accent-contrast: #0c1a14;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1.5rem;
+        background: var(--canvas);
+        color: var(--ink);
+        font-family: Inter, system-ui, -apple-system, sans-serif;
+        line-height: 1.6;
+      }
+      main {
+        max-width: 26rem;
+        width: 100%;
+        text-align: center;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 0.875rem;
+        padding: 2rem 1.5rem;
+      }
+      h1 {
+        margin: 0 0 0.5rem;
+        font-size: 1.25rem;
+        letter-spacing: -0.01em;
+      }
+      p {
+        margin: 0 0 1.25rem;
+        font-size: 0.9375rem;
+        color: var(--ink-muted);
+      }
+      ul {
+        margin: 0 0 1.5rem;
+        padding: 0;
+        list-style: none;
+        font-size: 0.875rem;
+        color: var(--ink-muted);
+        text-align: left;
+      }
+      li {
+        padding: 0.375rem 0;
+        border-bottom: 1px solid var(--line);
+      }
+      li:last-child {
+        border-bottom: 0;
+      }
+      a.button {
+        display: inline-block;
+        padding: 0.625rem 1.25rem;
+        border-radius: 0.5rem;
+        background: var(--accent);
+        color: var(--accent-contrast);
+        font-size: 0.875rem;
+        font-weight: 500;
+        text-decoration: none;
+      }
+      .mark {
+        display: block;
+        font-size: 2rem;
+        margin-bottom: 0.75rem;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <span class="mark" aria-hidden="true">◌</span>
+      <h1>Çevrimdışısınız</h1>
+      <p>Bu sayfa daha önce açılmadığı için gösterilemiyor.</p>
+      <ul>
+        <li>Daha önce açtığınız sureler ve ayetler çevrimdışı okunabilir.</li>
+        <li>Notlarınız, favorileriniz ve ayarlarınız cihazınızda saklıdır.</li>
+      </ul>
+      <a class="button" href="/">Ana sayfayı dene</a>
+    </main>
+    <script>
+      // Tema tercihi uygulama ile aynı anahtardan okunur.
+      (function () {
+        try {
+          var stored = localStorage.getItem('kuran-rehberi-theme');
+          var pref = stored ? JSON.parse(stored) : 'system';
+          var dark =
+            pref === 'dark' ||
+            (pref !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          document.documentElement.classList.toggle('dark', dark);
+        } catch (e) {}
+      })();
+    </script>
+  </body>
+</html>

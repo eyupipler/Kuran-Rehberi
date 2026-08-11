@@ -1,7 +1,8 @@
 # Ignore Windows special file
 nul
 **/nul
-.claude/
+
+# Deployment notes (local only)
 HOSTINGER-DEPLOY.md
 HOSTINGER-SHARED-DEPLOY.md
 
@@ -13,6 +14,7 @@ node_modules/
 # Build outputs
 frontend/.next/
 frontend/out/
+frontend/tsconfig.tsbuildinfo
 
 # Database (too large for GitHub, deploy separately)
 *.db
@@ -24,12 +26,16 @@ yarn-debug.log*
 yarn-error.log*
 
 # Environment files (local only)
+.env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
 
-# IDE
+# Yerel yardimci betikler
+yayinla.ps1
+
+# Editor / tool config
 .vscode/
 .idea/
 *.swp
@@ -40,7 +46,5 @@ yarn-error.log*
 Thumbs.db
 
 # Cache
-
 out.zip
 frontend/out.zip
-frontend/out/

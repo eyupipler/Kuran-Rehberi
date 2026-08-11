@@ -1,103 +1,131 @@
 const express = require('express');
 const router = express.Router();
 const { getDatabase } = require('../db/database');
+const {
+  optionalInt,
+  optionalString,
+  parsePagination,
+  requireSearchTerm,
+} = require('../middleware/validate');
+
+// LIKE joker karakterleri kullanıcı girdisinden gelmemeli.
+const LIKE_ESCAPE = "ESCAPE '\\'";
+function likePattern(term) {
+  return '%' + term.replace(/[\\%_]/g, '\\$&') + '%';
+}
+
+function verseFilters(query) {
+  const clauses = [];
+  const params = [];
+
+  const surah = optionalInt(query.surah, { min: 1, max: 114, fallback: null });
+  if (surah) {
+    clauses.push('v.surah_id = ?');
+    params.push(surah);
+  }
+
+  const revelation = optionalString(query.revelation, { max: 10 });
+  if (revelation === 'Mekki' || revelation === 'Medeni') {
+    clauses.push('s.revelation_type = ?');
+    params.push(revelation);
+  }
+
+  return { sql: clauses.length ? ' AND ' + clauses.join(' AND ') : '', params };
+}
 
 router.get('/', (req, res) => {
-  try {
-    const db = getDatabase();
-    const { q, translator, language, limit = 50, offset = 0 } = req.query;
+  const db = getDatabase();
+  const term = requireSearchTerm(req.query.q);
+  const { limit, offset } = parsePagination(req.query, { defaultLimit: 50, maxLimit: 100 });
+  const translator = optionalString(req.query.translator, { max: 40 });
+  const language = optionalString(req.query.language, { max: 10 });
+  const filters = verseFilters(req.query);
 
-    if (!q || q.length < 2) {
-      return res.status(400).json({ error: 'Arama sorgusu en az 2 karakter olmali' });
-    }
+  const conditions = [];
+  const params = [likePattern(term)];
 
-    let sql = `
-      SELECT v.surah_id as surahId, v.verse_number as verseNumber, v.arabic_text as arabicText,
-        s.name as surahName, s.arabic_name as surahArabicName,
-        t.code as translatorCode, t.name as translatorName, tr.text as translation
-      FROM translations tr
-      JOIN translators t ON t.id = tr.translator_id
-      JOIN verses v ON v.id = tr.verse_id
-      JOIN surahs s ON s.id = v.surah_id
-      WHERE tr.text LIKE ?
-    `;
-    let params = ['%' + q + '%'];
-
-    if (translator) {
-      sql += ' AND t.code = ?';
-      params.push(translator);
-    }
-    if (language) {
-      sql += ' AND t.language = ?';
-      params.push(language);
-    }
-
-    sql += ' ORDER BY v.surah_id, v.verse_number LIMIT ? OFFSET ?';
-    params.push(parseInt(limit), parseInt(offset));
-
-    const results = db.prepare(sql).all(...params);
-
-    let countSql = `
-      SELECT COUNT(*) as total FROM translations tr
-      JOIN translators t ON t.id = tr.translator_id
-      WHERE tr.text LIKE ?
-    `;
-    let countParams = ['%' + q + '%'];
-    if (translator) { countSql += ' AND t.code = ?'; countParams.push(translator); }
-    if (language) { countSql += ' AND t.language = ?'; countParams.push(language); }
-
-    const countResult = db.prepare(countSql).get(...countParams);
-
-    res.json({ query: q, total: countResult ? countResult.total : 0, results });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+  if (translator) {
+    conditions.push('t.code = ?');
+    params.push(translator);
   }
+  if (language && language !== 'all') {
+    conditions.push('t.language = ?');
+    params.push(language);
+  }
+
+  const where =
+    `WHERE tr.text LIKE ? ${LIKE_ESCAPE}` +
+    (conditions.length ? ' AND ' + conditions.join(' AND ') : '') +
+    filters.sql;
+  const allParams = [...params, ...filters.params];
+
+  const results = db
+    .prepare(
+      `SELECT v.surah_id as surahId, v.verse_number as verseNumber, v.arabic_text as arabicText,
+         s.name as surahName, s.arabic_name as surahArabicName, s.revelation_type as revelationType,
+         t.code as translatorCode, t.name as translatorName, tr.text as translation
+       FROM translations tr
+       JOIN translators t ON t.id = tr.translator_id
+       JOIN verses v ON v.id = tr.verse_id
+       JOIN surahs s ON s.id = v.surah_id
+       ${where}
+       ORDER BY v.surah_id, v.verse_number LIMIT ? OFFSET ?`
+    )
+    .all(...allParams, limit, offset);
+
+  const countRow = db
+    .prepare(
+      `SELECT COUNT(*) as total
+       FROM translations tr
+       JOIN translators t ON t.id = tr.translator_id
+       JOIN verses v ON v.id = tr.verse_id
+       JOIN surahs s ON s.id = v.surah_id
+       ${where}`
+    )
+    .get(...allParams);
+
+  res.json({ query: term, total: countRow ? countRow.total : 0, results });
 });
 
 router.get('/arabic', (req, res) => {
-  try {
-    const db = getDatabase();
-    const { q, limit = 50, offset = 0 } = req.query;
+  const db = getDatabase();
+  const term = requireSearchTerm(req.query.q);
+  const { limit, offset } = parsePagination(req.query, { defaultLimit: 50, maxLimit: 100 });
+  const filters = verseFilters(req.query);
 
-    if (!q || q.length < 2) {
-      return res.status(400).json({ error: 'Arama sorgusu en az 2 karakter olmali' });
-    }
+  const where = `WHERE v.arabic_text LIKE ? ${LIKE_ESCAPE}${filters.sql}`;
+  const params = [likePattern(term), ...filters.params];
 
-    const results = db.prepare(`
-      SELECT v.surah_id as surahId, v.verse_number as verseNumber, v.arabic_text as arabicText,
-        s.name as surahName, s.arabic_name as surahArabicName
-      FROM verses v JOIN surahs s ON s.id = v.surah_id
-      WHERE v.arabic_text LIKE ?
-      ORDER BY v.surah_id, v.verse_number LIMIT ? OFFSET ?
-    `).all('%' + q + '%', parseInt(limit), parseInt(offset));
+  const results = db
+    .prepare(
+      `SELECT v.surah_id as surahId, v.verse_number as verseNumber, v.arabic_text as arabicText,
+         s.name as surahName, s.arabic_name as surahArabicName, s.revelation_type as revelationType
+       FROM verses v JOIN surahs s ON s.id = v.surah_id
+       ${where}
+       ORDER BY v.surah_id, v.verse_number LIMIT ? OFFSET ?`
+    )
+    .all(...params, limit, offset);
 
-    const countResult = db.prepare('SELECT COUNT(*) as total FROM verses WHERE arabic_text LIKE ?').get('%' + q + '%');
+  const countRow = db
+    .prepare(
+      `SELECT COUNT(*) as total FROM verses v JOIN surahs s ON s.id = v.surah_id ${where}`
+    )
+    .get(...params);
 
-    res.json({ query: q, total: countResult ? countResult.total : 0, results });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  res.json({ query: term, total: countRow ? countRow.total : 0, results });
 });
 
 router.get('/translators', (req, res) => {
-  try {
-    const db = getDatabase();
-    const { language } = req.query;
+  const db = getDatabase();
+  const language = optionalString(req.query.language, { max: 10 });
 
-    let sql = 'SELECT code, name, language FROM translators';
-    let params = [];
+  const rows = language
+    ? db
+        .prepare('SELECT code, name, language FROM translators WHERE language = ? ORDER BY name')
+        .all(language)
+    : db.prepare('SELECT code, name, language FROM translators ORDER BY language, name').all();
 
-    if (language) {
-      sql += ' WHERE language = ?';
-      params.push(language);
-    }
-    sql += ' ORDER BY language, name';
-
-    const translators = db.prepare(sql).all(...params);
-    res.json(translators);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  res.json(rows);
 });
 
 module.exports = router;

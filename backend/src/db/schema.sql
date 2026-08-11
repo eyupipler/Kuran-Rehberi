@@ -77,29 +77,10 @@ CREATE TABLE IF NOT EXISTS words (
 
 -- Indeksler (Performans icin)
 CREATE INDEX IF NOT EXISTS idx_verses_surah ON verses(surah_id);
+CREATE INDEX IF NOT EXISTS idx_verses_surah_number ON verses(surah_id, verse_number);
 CREATE INDEX IF NOT EXISTS idx_translations_verse ON translations(verse_id);
 CREATE INDEX IF NOT EXISTS idx_translations_translator ON translations(translator_id);
+CREATE INDEX IF NOT EXISTS idx_translations_verse_translator ON translations(verse_id, translator_id);
 CREATE INDEX IF NOT EXISTS idx_words_verse ON words(verse_id);
 CREATE INDEX IF NOT EXISTS idx_words_root ON words(root_id);
 CREATE INDEX IF NOT EXISTS idx_roots_root ON roots(root);
-
--- Full-text search icin FTS5 tablosu
-CREATE VIRTUAL TABLE IF NOT EXISTS translations_fts USING fts5(
-    text,
-    content='translations',
-    content_rowid='id'
-);
-
--- FTS tablosunu guncellemek icin triggerlar
-CREATE TRIGGER IF NOT EXISTS translations_ai AFTER INSERT ON translations BEGIN
-    INSERT INTO translations_fts(rowid, text) VALUES (new.id, new.text);
-END;
-
-CREATE TRIGGER IF NOT EXISTS translations_ad AFTER DELETE ON translations BEGIN
-    INSERT INTO translations_fts(translations_fts, rowid, text) VALUES('delete', old.id, old.text);
-END;
-
-CREATE TRIGGER IF NOT EXISTS translations_au AFTER UPDATE ON translations BEGIN
-    INSERT INTO translations_fts(translations_fts, rowid, text) VALUES('delete', old.id, old.text);
-    INSERT INTO translations_fts(rowid, text) VALUES (new.id, new.text);
-END;
