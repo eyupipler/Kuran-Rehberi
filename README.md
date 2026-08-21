@@ -4,7 +4,7 @@ Kapsamlı bir Kuran araştırma platformu — kelime kökü analizi, çoklu çev
 
 ## Özellikler
 
-- **40+ Türkçe, 6 İngilizce meal** desteği (Ahmet Hulusi, Elmalılı, Şinasi Güneş, Süleyman Ateş, vb.)
+- **40+ Türkçe, 6 İngilizce meal** desteği (Ahmet Hulusi, Elmalılı, Şinasi Güneş, Hakkı Yılmaz, vb.)
 - **Kelime kökü analizi** — her kelimenin kökünü ve Kuran'daki tüm tekrarlarını görün
 - **Gerçek zamanlı kök arama** — Türkçe (`resul`, `elçi`), Arapça (`رسل`), fonetik (`rsl`, `r-s-l`) yazımla arama
 - **Arapça harf filtresi** — Türkçe okunuş etiketleriyle harf bazlı kök tarama
